@@ -29,7 +29,7 @@ classdef classGpet < handle
         % Projector/Backrpojector. Options:
         % 'pre-computed_matlab','otf_matlab', 'otf_siddon_cpu','otf_siddon_gpu'
         method
-        % PSF. Oprions: 'shift-invar', 'shift-var', 'none'
+        % PSF. Options: 'shift-invar', 'shift-var', 'none'
         PSF
         % Number of iterations:
         nIter

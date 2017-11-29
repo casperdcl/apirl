@@ -73,5 +73,3 @@ s_withoutNorm = s_withoutNorm .* scale_factor_scatter;
 s = poissrnd(s_withoutNorm.*n);
 % Add randoms and scatter@
 simulatedSinogram = y_poisson + s + r;
-
-

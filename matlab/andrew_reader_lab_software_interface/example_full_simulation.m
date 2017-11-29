@@ -1,5 +1,5 @@
 %% EXAMPLE MLEM MARTIN PROJECTOR (ANY SPAN)
-clear all 
+clear all
 close all
 set_framework_environment();
 % set_framework_environment(basePath, binaryPath);
@@ -11,11 +11,12 @@ PET.radialBinTrim = 0;
 PET.Geom = '';
 PET.random_algorithm = 'from_ML_singles_matlab';
 PET.sinogram_size.span = 11;
+%PET.verbosity = 1;
 PET = classGpet(PET);
 %% SIMULATE A BRAIN PHANTOM WITH ATTENUATION, NORMALIZATION, RANDOMS AND SCATTER
 %[sinogram, delayedSinogram, structSizeSino3d] = interfileReadSino('E:\PatientData\FDG\PETSinoPlusUmap-Converted\PETSinoPlusUmap-00\PETSinoPlusUmap-00-sino-uncomp.s.hdr');
 load BrainMultiMaps_mMR.mat;
-
+%%
 tAct = permute(MultiMaps_Ref.PET, [2 1 3]);
 tAct = tAct(end:-1:1,:,:);
 tMu = permute(MultiMaps_Ref.uMap, [2 1 3]);
@@ -32,11 +33,11 @@ T1 = T1(end:-1:1,:,:);
 
 gaps = PET.gaps;
 
-% Change the image sie, to the one of the phantom:
+% Change the image size, to the one of the phantom:
 PET.init_image_properties(refAct);
 
 % Change the span size:
-span = 11;
+span = 11
 numRings = 64;
 maxRingDifference = 60;
 PET.init_sinogram_size(span, numRings, maxRingDifference);
@@ -68,7 +69,6 @@ scale_factor_randoms = counts*randomsFraction./sum(r(:));
 % Poisson distribution:
 r = poissrnd(r.*scale_factor_randoms);
 
-scatterFraction = 0.35;
 counts_scatter = counts*scatterFraction;
 s_withoutNorm = PET.S(y);
 scale_factor_scatter = counts_scatter/sum(s_withoutNorm(:));
@@ -86,4 +86,5 @@ sensImage = PET.Sensitivity(anf);
 % additive term:
 additive = (r + s).*ncf.*acf; % (randoms +scatter)./(afs*nfs) = (randoms+scatter)+
 recon = PET.ones();
-recon = PET.OPOSEM(simulatedSinogram,additive, sensImage,recon, ceil(60/PET.nSubsets));
+recon = PET.OPOSEM(simulatedSinogram, additive, ...
+  sensImage, recon, ceil(60/PET.nSubsets));
