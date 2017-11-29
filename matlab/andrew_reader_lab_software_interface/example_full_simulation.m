@@ -7,6 +7,10 @@ set_framework_environment();
 PET.scanner = 'mMR';
 PET.method =  'otf_siddon_cpu';
 PET.PSF.type = 'none';
+%PET.method =  'otf_siddon_gpu';
+%PET.PSF.type = 'shift-invar';
+%PET.PSF.Width = 4.3;
+%PET.nSubsets = 1;
 PET.radialBinTrim = 0;
 PET.Geom = '';
 PET.random_algorithm = 'from_ML_singles_matlab';
@@ -53,7 +57,7 @@ y = PET.P(tAct);
 
 % Multiplicative correction factors:
 ncf = PET.NCF;
-acf= PET.ACF(tMu, refAct);
+acf = PET.ACF(tMu, refAct);
 % Convert into factors:
 n = ncf; a = acf;
 n(n~=0) = 1./ n(n~=0); a(a~=0) = 1./ a(a~=0);

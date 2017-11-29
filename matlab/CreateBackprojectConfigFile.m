@@ -113,7 +113,9 @@ if useGpu == 0
 else
     fprintf(fid,'backprojector := CuSiddonProjector\n');
     fprintf(fid,'backprojector block size := {576,1,1}\n');
-    fprintf(fid,'gpu id := 0\n');
+    %fprintf(fid,'gpu id := 0\n');
+    g = gpuDevice;
+    fprintf(fid,['gpu id := ' num2str(g.Index - 1) '\n']);
 end
 fprintf(fid,'siddon number of samples on the detector := %d\n', numSamples);
 fprintf(fid,'siddon number of axial samples on the detector := %d\n', numAxialSamples);

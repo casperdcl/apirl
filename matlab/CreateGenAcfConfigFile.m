@@ -90,7 +90,9 @@ if useGpu == 0
 else
     fprintf(fid,'projector := CuSiddonProjector\n');
     fprintf(fid,'projector block size := {128,1,1}\n');
-    fprintf(fid,'gpu id := 0\n');
+    %fprintf(fid,'gpu id := 0\n');
+    g = gpuDevice;
+    fprintf(fid,['gpu id := ' num2str(g.Index - 1) '\n']);
 end
 if strcmp(scanner, 'cylindrical')
     fprintf(fid,'cylindrical pet radius (in mm) := %f\n', scanner_properties.radius_mm);
