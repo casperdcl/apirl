@@ -1,10 +1,9 @@
 %parpool('local', 6);
 i=0;
 for dose = [0.1, 0.2, 0.4, 1, 10, -1]
-for subj = [4, 54]
-i=i+1, if i<=7, continue, end
+for subj = [5, 20]
 
-if subj==4, tumours=-1;
+if subj==5, tumours=-1;
 else, tumours=-2;
 end
 

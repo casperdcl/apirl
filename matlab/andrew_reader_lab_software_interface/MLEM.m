@@ -76,16 +76,14 @@ PET.tempPath = '/dev/shm/cc16/temp/mlem';
 
 %%
 %parpool('local', 6);
+use_gpus=[1 2 4] + 1;
 reconMLEM = cell(6, 1);
 %load('output/reconMLEM.mat')
 %load('output/reconMLEMPSF.mat')
 parfor i=0:5
 noise_realisation=1 + floor(i / 2);
 % N.B.: keep gpu const for each noise_realisation
-%gpu = 2+mod(noise_realisation - 1, 3);
-%gpu = 8-mod(noise_realisation, 3);
-%if gpu == 6, gpu = 4; end
-gpu = 1+mod(noise_realisation - 1, 3);
+gpu = use_gpus(1 + mod(noise_realisation - 1, length(use_gpus)));
 gpuDevice(gpu);
 
 %%
