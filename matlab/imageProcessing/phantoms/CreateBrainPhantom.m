@@ -68,7 +68,7 @@ mumap(indicesBone) = mu_bone_1_cm;
 
 %% TRANSFORM THE ATANOMY INTO PET SIGNALS
 whiteMatterAct = 32;
-grayMatterAct = 128;
+grayMatterAct = whiteMatterAct * 4;
 skinAct = 16;
 pet = phantom;
 pet(indicesWhiteMatter) = whiteMatterAct;

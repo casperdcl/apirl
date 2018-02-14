@@ -47,9 +47,9 @@ maxRingDifference = 60;
 PET.init_sinogram_size(span, numRings, maxRingDifference);
 
 % Counts to simulate:
-counts = 1e9;
-randomsFraction = 0.1;
-scatterFraction = 0.35;
+counts = 500e6  % 1e9
+randomsFraction = 0.2  %.1
+scatterFraction = 0.2  %.35
 truesFraction = 1 - randomsFraction - scatterFraction;
 
 % Geometrical projection:
@@ -91,4 +91,5 @@ sensImage = PET.Sensitivity(anf);
 additive = (r + s).*ncf.*acf; % (randoms +scatter)./(afs*nfs) = (randoms+scatter)+
 recon = PET.ones();
 recon = PET.OPOSEM(simulatedSinogram, additive, ...
-  sensImage, recon, ceil(60/PET.nSubsets));
+  sensImage, recon, ceil(100/PET.nSubsets));
+%save(['reconMLEMPSF' num2str(noise_realisation) '.mat'], 'recon')
