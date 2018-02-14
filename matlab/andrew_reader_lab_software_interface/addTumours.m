@@ -29,36 +29,55 @@ if ~m, m = 1; end
 
 % NB: tumours specified by:
 % fractional positions d/h/w, radius/[w], value/[max], sigma/[w]
-if numT
-  pad = 1.5;  % place tumours in circle of diameter = 2 / (2+pad)
+pad = 1.5;  % place tumours in circle of diameter = 2 / (2+pad)
+if numT > 0
+  z = 0.5;
   for rt=rand([2 numT])
-    y = (sin(rt(2) * 2 * pi) * rt(1) + 1) / (2+pad) + pad/(2*(2+pad));
-    x = (cos(rt(2) * 2 * pi) * rt(1) + 1) / (2+pad) + pad/(2*(2+pad));
+    x, y = pol2cart(rt(1) *2*pi, rt(2));
+    % centre about 0.5
+    y = (y + 1) / 2;
+    x = (x + 1) / 2;
     im3d = max(im3d, tumour(d, h, w, m, ...
-        [0.5, y, x, rSmall, maxScale, sigma]));
+        [z, y, x, rSmall, maxScale, sigma]), 1/pad);
   end
 else
+  switch numT
+  case -2
   tBig = [0.5, 0.45, 0.4, rSmall*2.0, maxScale, sigma];
   tSmall = [0.5, 0.475, 0.55, rSmall, maxScale, sigma];
   tBigBlur = [0.5, 0.625, 0.55, tBig(4), maxScale, sigma + tBig(4)/3.0];
   tBiggest = [0.5, 0.625, 0.45, rSmall*3.0, maxScale, sigma];
-  %tBig = [0.5, 0.45, 0.43, rSmall*2.0, maxScale, sigma];
-  %tSmall = [0.5, 0.53, 0.57, rSmall, maxScale, sigma];
-  %tBigBlur = [0.5, 0.625, 0.43, tBig(4), maxScale, sigma + tBig(4)/3.0];
-  %tBiggest = [0.5, 0.5, 0.46, rSmall*3.0, maxScale, sigma];
+  default
+  tBig = [0.5, 0.45, 0.43, rSmall*2.0, maxScale, sigma];
+  tSmall = [0.5, 0.53, 0.57, rSmall, maxScale, sigma];
+  tBigBlur = [0.5, 0.625, 0.43, tBig(4), maxScale, sigma + tBig(4)/3.0];
+  tBiggest = [0.5, 0.5, 0.46, rSmall*3.0, maxScale, sigma];
+  end  % switch numT
 
-  im3d = max(im3d, tumour(d, h, w, m, tBig));
-  im3d = max(im3d, tumour(d, h, w, m, tSmall));
-  im3d = max(im3d, tumour(d, h, w, m, tBigBlur));
-  im3d = max(im3d, tumour(d, h, w, m, tBiggest));
+  im3d = max(im3d, tumour(d, h, w, m, tBig, 1/pad));
+  im3d = max(im3d, tumour(d, h, w, m, tSmall, 1/pad));
+  im3d = max(im3d, tumour(d, h, w, m, tBigBlur, 1/pad));
+  im3d = max(im3d, tumour(d, h, w, m, tBiggest, 1/pad));
 end  % numT
 im3d = im3d ./ max(im3d(:));
 end  % addTumours
 
 
-function im3d = tumour(d, h, w, m, t)
+function im3d = tumour(d, h, w, m, t, varargin)
+%% Arguments:
+% image depth/height/width, maxscale, tumour params
+%% Options:
+% scale (default 1) towards centre for tumour z/y/x
 
-T = t .* [d h w w m w];
+scale = 1; if nargin>5, scale=varargin{1}; end
+[phi, theta, r] = cart2sph(t(3) - 0.5, t(2) - 0.5, t(1) - 0.5);
+[x, y, z] = sph2cart(phi, theta, r * scale);
+z = z + 0.5;
+y = y + 0.5;
+x = x + 0.5;
+
+T = [z, y, x, t(4:end)] .* [d h w w m w];
+
 % [D, H, W, R, V, S] = T;
 S = T(6);
 
@@ -71,3 +90,4 @@ end
 im3d = permute(im3d, [3 2 1]);
 
 end  % tumour
+
