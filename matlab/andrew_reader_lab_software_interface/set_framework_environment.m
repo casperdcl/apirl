@@ -9,8 +9,8 @@ elseif nargin == 1
 end
 
 %% CONFIGURE PATHS
-setenv('PATH', [getenv('PATH') pathsep ...
-    apirlBinaryPath filesep 'build' filesep 'bin']);
+setenv('PATH', [apirlBinaryPath filesep 'build' filesep 'bin' ...
+                pathsep getenv('PATH')]);
 setenv('LD_LIBRARY_PATH', [getenv('LD_LIBRARY_PATH') pathsep ...
     apirlBinaryPath filesep 'build' filesep 'bin']);
 % Check what OS I am running on:

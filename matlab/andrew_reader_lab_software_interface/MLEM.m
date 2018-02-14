@@ -1,14 +1,25 @@
-function [reconMLEM, reconMLEMPSF] = MLEM(fsSigma, fsPet, fsT1, varargin)
-%fsSigma = 1, fsPet = 1.5, fsT1 = 0.75
-%fsSigma = 1, fsPet = 2, fsT1 = 1
-%fsSigma = 0, fsPet = 0.4, fsT1 = 0.2
+function reconAPIRL = MLEM(fsSigma, fsPet, fsT1, varargin)
+%% Simulate reconstruction of specified random-structured brainweb subject
+%{
+# Arguments:
+fsSigma = 1, fsPet = 1.5, fsT1 = 0.75
+fsSigma = 1, fsPet = 2, fsT1 = 1
+fsSigma = 0, fsPet = 0.4, fsT1 = 0.2
+# Options:
+subj = 'subject_04'
+counts = 500e6
+# Note that counts < 1 will perform noise-free reconstruction
+%}
+
+subj = 'subject_04';
+counts = 500e6;
+if nargin > 3, subj = varargin{1}; end
+if nargin > 4, counts = varargin{2}; end
+
 %% EXAMPLE MLEM MARTIN PROJECTOR (ANY SPAN)
-%clear all
-close all
+%clear all, close all
 set_framework_environment();
 % set_framework_environment(basePath, binaryPath);
-subj = 'subject_04';
-if nargin > 3, subj = varargin{1}; end
 
 %% SIMULATE A BRAIN PHANTOM WITH ATTENUATION, NORMALIZATION, RANDOMS AND SCATTER
 %[sinogram, delayedSinogram, structSizeSino3d] = interfileReadSino('E:\PatientData\FDG\PETSinoPlusUmap-Converted\PETSinoPlusUmap-00\PETSinoPlusUmap-00-sino-uncomp.s.hdr');
@@ -38,7 +49,6 @@ numRings = 64;
 maxRingDifference = 60;
 
 % Counts to simulate:
-counts = 500e6
 randomsFraction = 0.2  %.1
 scatterFraction = 0.2  %.35
 truesFraction = 1 - randomsFraction - scatterFraction;
@@ -62,12 +72,13 @@ PET.sinogram_size.span = 11;
 PET.tempPath = '/dev/shm/cc16/temp/mlem';
 
 %%
-parpool('local', 6)
+%parpool('local', 6);
 reconMLEM = cell(6, 1);
 %load('output/reconMLEM.mat')
 %load('output/reconMLEMPSF.mat')
 parfor i=0:5
 noise_realisation=1 + floor(i / 2);
+% N.B.: keep gpu const for each noise_realisation
 %gpu = 2+mod(noise_realisation - 1, 3);
 %gpu = 8-mod(noise_realisation, 3);
 %if gpu == 6, gpu = 4; end
@@ -76,7 +87,7 @@ gpuDevice(gpu);
 
 %%
 PETmlem = PET;
-PETmlem.tempPath = [PET.tempPath num2str(i) subj '/'];
+PETmlem.tempPath = [PET.tempPath sprintf('%d%s%.3g%.3g%.3g%.3g', i, subj, counts, fsSigma, fsPet, fsT1) '/'];
 PETpsf = PETmlem;
 PETpsf.PSF.Width = psfPSF;
 PETm = classGpet(PETmlem);
@@ -118,9 +129,9 @@ reconAPIRL.mlem_psf = reconMLEM(2:2:end, :,:,:);
 reconAPIRL.voxelSize_mm = pixelSize_mm;
 reconAPIRL.psf_mm = [noPSFpsf, psfPSF];
 save(['output/reconAPIRL_brainweb' ...
-      sprintf('_04-S_%.3g-NP_%.3g-NT1_%.3g_t', fsSigma, fsPet, fsT1) ...
-      '.mat'], 'reconAPIRL')
-%save('output/reconMLEMPSF.mat', 'reconMLEMPSF')
+      sprintf('_%s-S_%.3g-NP_%.3g-NT1_%.3g-C_%.3g_t', subj, fsSigma, fsPet, fsT1, counts) ...
+      '.mat'], 'reconAPIRL', '-v7.3')
+%save('output/reconMLEMPSF.mat', 'reconMLEMPSF', '-v7.3')
 
 end  % function MLEM
 
@@ -139,14 +150,18 @@ function [ncf, acf, n, y, y_poisson] = poisson_recon(...
 % Multiplicative correction factors:
 ncf = PET.NCF;
 acf = PET.ACF(tMu, refAct);
+
 % Convert into factors:
 n = ncf; a = acf;
 n(n~=0) = 1./ n(n~=0); a(a~=0) = 1./ a(a~=0);
+
 % Introduce poission noise:
 y = y.*n.*a;
-scale_factor = counts*truesFraction/sum(y(:));
-
-y_poisson = poissrnd(y.*scale_factor);
+scale_factor = abs(counts)*truesFraction/sum(y(:));
+y_poisson = y.*scale_factor;
+if counts > 0
+  y_poisson = poissrnd(y.*scale_factor);
+end
 
 end  % poisson_recon
 
@@ -155,13 +170,13 @@ function recon = do_recon(PET, niters, y, y_poisson, ...
   n, ncf, acf, tMu, refAct, counts, truesFraction, randomsFraction, scatterFraction)
 
 % Additive factors:
-r = PET.R(counts*randomsFraction); 
+r = PET.R(abs(counts)*randomsFraction);
 %r = PET.R(delayedSinogram);  % Without a delayed sinograms, just
-scale_factor_randoms = counts*randomsFraction./sum(r(:));
+scale_factor_randoms = abs(counts)*randomsFraction./sum(r(:));
 % Poisson distribution:
 %r = poissrnd(r.*scale_factor_randoms);
 
-counts_scatter = counts*scatterFraction;
+counts_scatter = abs(counts)*scatterFraction;
 s_withoutNorm = PET.S(y);
 scale_factor_scatter = counts_scatter/sum(s_withoutNorm(:));
 s_withoutNorm = s_withoutNorm .* scale_factor_scatter;
