@@ -8,6 +8,7 @@ fsSigma = 0, fsPet = 0.4, fsT1 = 0.2
 # Options:
 subj = 'subject_04'
 counts = 500e6
+numTumours = -1
 # Note that counts < 1 will perform noise-free reconstruction
 %}
 
@@ -15,6 +16,7 @@ subj = 'subject_04';
 counts = 500e6;
 if nargin > 3, subj = varargin{1}; end
 if nargin > 4, counts = varargin{2}; end
+if nargin > 5, numTumours = varargin{3}; end
 
 %% EXAMPLE MLEM MARTIN PROJECTOR (ANY SPAN)
 %clear all, close all
@@ -30,7 +32,8 @@ MultiMaps_Ref = readPetMr(fsSigma, fsPet, fsT1, subj);
 tAct = permute(MultiMaps_Ref.PET, [2 1 3]);
 tAct = tAct(end:-1:1,:,:);
 % tumours
-tAct = permute(addTumours(permute(tAct, [3 2 1]), 344*2.08626), [3 2 1]);
+tAct = permute(addTumours(permute(tAct, [3 2 1]), ...
+                          344*2.08626, 5, 1.5, numTumours), [3 2 1]);
 tMu = permute(MultiMaps_Ref.uMap, [2 1 3]);
 tMu = tMu(end:-1:1,:,:);
 pixelSize_mm = [2.08625 2.08625 2.03125];
@@ -129,7 +132,8 @@ reconAPIRL.mlem_psf = reconMLEM(2:2:end, :,:,:);
 reconAPIRL.voxelSize_mm = pixelSize_mm;
 reconAPIRL.psf_mm = [noPSFpsf, psfPSF];
 save(['output/reconAPIRL_brainweb' ...
-      sprintf('_%s-S_%.3g-NP_%.3g-NT1_%.3g-C_%.3g_t', subj, fsSigma, fsPet, fsT1, counts) ...
+      sprintf('_%s-S_%.3g-NP_%.3g-NT1_%.3g-C_%.3g_t%d', ...
+              subj, fsSigma, fsPet, fsT1, counts, -numTumours) ...
       '.mat'], 'reconAPIRL', '-v7.3')
 %save('output/reconMLEMPSF.mat', 'reconMLEMPSF', '-v7.3')
 
