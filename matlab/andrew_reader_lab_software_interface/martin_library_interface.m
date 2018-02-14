@@ -1,12 +1,12 @@
 %% EXAMPLE MLEM RADON MATLAB
-clear all 
+clear all
 close all
 load BrainWeb.mat
 
 % load g_truth
 p.scanner = '2D_radon'; %'mMR'
 p.method = 'otf_matlab'; %, 'otf_Gpu', 'pre-computed_matlab'
-p.PSF.type = 'shift-invar'; 
+p.PSF.type = 'shift-invar';
 p.PSF.Width = 4; %mm
 %p.nSubsets = 1;
 p.nIter = 30;
@@ -22,7 +22,7 @@ Sensi = PET.PT(1);
 x = PET.ones;
 figure
 for i = 1:p.nIter
-    
+
     x = x./(Sensi).*PET.PT(y./(PET.P(x)+eps));
     drawnow, imagesc(x), axis image, colormap gray
 end
@@ -32,7 +32,7 @@ load BrainWeb.mat
 % load g_truth
 p.scanner = '2D_radon'; %'mMR'
 p.method = 'otf_matlab'; %, 'otf_Gpu', 'pre-computed_matlab'
-p.PSF.type = 'shift-invar'; 
+p.PSF.type = 'shift-invar';
 p.PSF.Width = 4; %mm
 p.nSubsets = 10;
 p.nIter = 3;
@@ -51,7 +51,7 @@ for i = 1:PET.nIter
         ys=y(:,PET.sinogram_size.subsets(:,s));
         x = x./(PET.PT(1)).*PET.PT(ys./(PET.P(x,s)+eps),s);
     end
-    
+
     drawnow, imagesc(x), axis image, colormap gray
 end
 %
@@ -64,11 +64,11 @@ for i = 1:PET.nIter
         ys=y(:,PET.sinogram_size.subsets(:,s));
         x = x./(PET.PT(1)).*PET.PT(ys./(PET.P(x,s)+eps),s);
     end
-    
+
     drawnow, imagesc(x), axis image, colormap gray
 end
 %% EXAMPLE MLEM MARTIN PROJECTOR (DEFAULT SPAN 11)
-clear all 
+clear all
 close all
 % Check what OS I am running on:
 if(strcmp(computer(), 'GLNXA64'))
@@ -94,7 +94,7 @@ setenv('PATH', [getenv('PATH') sepEnvironment apirlPath pathBar 'build' pathBar 
 setenv('LD_LIBRARY_PATH', [getenv('LD_LIBRARY_PATH') sepEnvironment apirlPath pathBar 'build' pathBar 'bin']);
 
 fullFilename = '/home/mab15/workspace/KCL/Biograph_mMr/Mediciones/BRAIN_PETMR/SINOGRAMS/PET_ACQ_68_20150610155347_ima_AC_000_000.v.hdr';
-[g_truth, refImage, bedPosition_mm, info]  = interfileReadSiemensImage(fullFilename); 
+[g_truth, refImage, bedPosition_mm, info]  = interfileReadSiemensImage(fullFilename);
 
 objGpet.scanner = 'mMR';
                 objGpet.method =  'otf_siddon_gpu';
@@ -119,12 +119,12 @@ x = PET.ones;
 sliceToShow = 50;
 figure
 for i = 1:PET.nIter
-    
+
     x = x./(Sensi).*PET.PT(y./(PET.P(x)+eps));
     drawnow, imagesc(x(:,:,sliceToShow)), axis image, colormap gray
 end
 %% EXAMPLE MLEM MARTIN PROJECTOR (ANY SPAN)
-clear all 
+clear all
 close all
 % Check what OS I am running on:
 if(strcmp(computer(), 'GLNXA64'))
@@ -149,7 +149,7 @@ addpath(genpath([apirlPath pathBar 'matlab']));
 setenv('PATH', [getenv('PATH') sepEnvironment apirlPath pathBar 'build' pathBar 'bin']);
 setenv('LD_LIBRARY_PATH', [getenv('LD_LIBRARY_PATH') sepEnvironment apirlPath pathBar 'build' pathBar 'bin']);
 
-[g_truth, refImage]  = interfileRead('phantom.h33'); 
+[g_truth, refImage]  = interfileRead('phantom.h33');
 
 PET = classGpet();
 % Change the image sie, to the one of the phantom:
@@ -172,7 +172,7 @@ x = PET.ones;
 sliceToShow = 50;
 figure
 for i = 1:PET.nIter
-    
+
     x = x./(Sensi).*PET.PT(y./(PET.P(x)+eps));
     x(Sensi==0) = 0;
     drawnow, imagesc(x(:,:,sliceToShow)), axis image, colormap gray
@@ -191,7 +191,7 @@ g_truth{1}(g_truth{1}<0) = 0;
 % load g_truth
 p.scanner = '2D_mMR'; %'mMR'
 p.method = 'otf_siddon_cpu'; %, 'otf_Gpu', 'pre-computed_matlab'
-p.PSF.type = 'none'; 
+p.PSF.type = 'none';
 p.PSF.Width = 4; %mm
 %p.nSubsets = 1;
 p.nIter = 30;
@@ -207,7 +207,7 @@ Sensi = PET.PT(1);
 x = PET.ones;
 figure
 for i = 1:p.nIter
-    
+
     x = x./(Sensi).*PET.PT(y./(PET.P(x)+eps));
     x(Sensi==0) = 0;
     drawnow, imagesc(x), axis image, colormap gray

@@ -67,7 +67,7 @@ scale_factor = counts*truesFraction/sum(y(:));
 y_poisson = poissrnd(y.*scale_factor);
 
 % Additive factors:
-r = PET.R(counts*randomsFraction); 
+r = PET.R(counts*randomsFraction);
 %r = PET.R(delayedSinogram);  % Without a delayed sinograms, just
 scale_factor_randoms = counts*randomsFraction./sum(r(:));
 % Poisson distribution:

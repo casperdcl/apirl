@@ -1,5 +1,5 @@
 %% EXAMPLE MLEM MARTIN PROJECTOR (ANY SPAN)
-clear all 
+clear all
 close all
 set_framework_environment();
 % set_framework_environment(basePath, binaryPath);
@@ -83,7 +83,7 @@ anf(anf~=0) = 1./anf(anf~=0);
 %     scatter = PET.S(scatterBinaryFilename, sino_span, ncfs, acfs_human, randoms, ring);
 % end
 % % This scatter is already normalzied
-        
+
 for nRays = [1 2]
     for nAxialRays = [1 2]
         %% INIT CLASS GPET

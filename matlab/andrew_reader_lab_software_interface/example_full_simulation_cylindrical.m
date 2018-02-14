@@ -1,5 +1,5 @@
 %% EXAMPLE MLEM MARTIN PROJECTOR (ANY SPAN)
-clear all 
+clear all
 close all
 %% CONFIGURE PATHS
 % Check what OS I am running on:
@@ -96,7 +96,7 @@ scale_factor = counts*truesFraction/sum(y(:));
 y_poisson = poissrnd(y.*scale_factor);
 
 % Additive factors:
-r = PET.R(counts*randomsFraction); 
+r = PET.R(counts*randomsFraction);
 % Poisson distribution:
 r = poissrnd(r);
 

@@ -17,10 +17,10 @@ opt.nl_weights = G.W_Bowsher(filteredMR,opt.B);
 opt.tolerance = 1e-4;
 opt.save = 0;
 opt.nIter = 150;
-opt.display = 1; 
+opt.display = 1;
 opt.lambda = 5e4;
 opt.message = 'Bowsher-B50';
-opt.save_i = ['D:\Multi_parametricPET_MR\Results\ClinicalData\FDG_P2_TEST\' opt.message '\'];    
+opt.save_i = ['D:\Multi_parametricPET_MR\Results\ClinicalData\FDG_P2_TEST\' opt.message '\'];
 
 BW = G.MAP_OSEM(PET,sino_span,additive, sensImage, opt,initial_image);
 %% Local joint entropy
@@ -31,10 +31,10 @@ opt.je_weights = G.W_JointEntropy(filteredMR,opt.sigma_a);
 opt.tolerance = 1e-4;
 opt.save = 0;
 opt.nIter = 150;
-opt.display = 1; 
+opt.display = 1;
 opt.lambda = 5e4;
 opt.message = 'JointEntropy-a15-f0.2';
-opt.save_i = ['D:\Multi_parametricPET_MR\Results\ClinicalData\FDG_P2_TEST\' opt.message '\'];    
+opt.save_i = ['D:\Multi_parametricPET_MR\Results\ClinicalData\FDG_P2_TEST\' opt.message '\'];
 JE = G.MAP_OSEM(PET,sino_span,additive, sensImage, opt,initial_image);
 
 

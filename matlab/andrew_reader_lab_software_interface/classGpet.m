@@ -1,7 +1,7 @@
 classdef classGpet < handle
     properties (SetAccess = private)
         % Type of scanner. Options: '2D_radon', '2D_mMR', 'mMR'
-        scanner 
+        scanner
         % Sinogram size:
         sinogram_size     % Struct with the size of the sinogram
         % Image size:
@@ -22,7 +22,7 @@ classdef classGpet < handle
         % Asymmertic pre-computed sysetm matrix
         Geom
     end
-    
+
     methods
         % Constructors:
         function objGpet = classGpet(varargin) % Default options: (). From file (filename)
@@ -48,7 +48,7 @@ classdef classGpet < handle
                     objGpet.radialBinTrim = 0;
                     objGpet.Geom = '';
                     objGpet.tempPath = '';
-                    
+
                     % get fields from user's param
                     param.null = 0;
                     vfields = fieldnames(varargin{1});
@@ -59,7 +59,7 @@ classdef classGpet < handle
                             objGpet.(field) = varargin{1}.(field);
                         end
                     end
-                    
+
                 elseif ischar(varargin{1})
                     objGpet.readConfigFromFile(varargin{1})
                 end
@@ -69,11 +69,11 @@ classdef classGpet < handle
             % Init scanner properties:
             objGpet.initScanner();
         end
-        
+
         function objGpet = readConfigFromFile(objGpet, strFilename)
             error('todo: read configuration from file');
         end
-        
+
         % Function that intializes the scanner:
         function initScanner(objGpet)
             if strcmpi(objGpet.scanner,'2D_radon')
@@ -86,7 +86,7 @@ classdef classGpet < handle
                 error('unkown scanner')
             end
         end
-        
+
         % Forward projector:
         function m = P(objGpet, x,subset_i)
             % full/sub-forward
@@ -95,14 +95,14 @@ classdef classGpet < handle
             else
                 angles = objGpet.sinogram_size.subsets(:,subset_i);
             end
-            
+
             % PSF convolution
             if strcmpi(objGpet.PSF.type,'shift-invar')
                 x = Gauss3DFilter(x, objGpet.image_size, objGpet.PSF.Width);
             else
                 disp('todo: shift-var')
             end
-            
+
             % Check the image size:
             if size(x) == 1
                 % Uniform image with x value:
@@ -116,15 +116,15 @@ classdef classGpet < handle
                 if sizeX ~= objGpet.image_size.matrixSize
                     warning('x: the input image has a different size to the matrix_size of the proejctor');
                 end
-            end  
-          
+            end
+
             if strcmpi(objGpet.scanner,'2D_radon')
                 if strcmpi(objGpet.method, 'otf_matlab')
                     m = radon(x,angles-1);
                 else
                     error(sprintf('The method %s is not available for the scanner %s.', objGpet.method, objGpet.scanner));
                 end
-                    
+
             elseif strcmpi(objGpet.scanner,'mMR')
                 if strcmpi(objGpet.method, 'pre-computed_matlab')
                     g = init_precomputed_G (objGpet);
@@ -145,7 +145,7 @@ classdef classGpet < handle
                     end
                 end
             elseif strcmpi(objGpet.scanner,'2D_mMR')
-                if strcmpi(objGpet.method, 'pre-computed_matlab')               
+                if strcmpi(objGpet.method, 'pre-computed_matlab')
                     g = init_precomputed_G (objGpet);
                     RadialBins = (1 : objGpet.sinogram_size.nRadialBins-objGpet.radialBinTrim)+floor(objGpet.radialBinTrim/2);
                     m = Project_preComp(objGpet,x, g, angles, RadialBins, 1);
@@ -163,14 +163,14 @@ classdef classGpet < handle
                         [m, structSizeSinogram] = ProjectMmr2d(x, objGpet.image_size.voxelSize_mm, objGpet.tempPath, numSubsets, subset_i, 1);
                     end
                 end
-                
+
             else
                 error('unkown scanner')
             end
         end
-        
+
         function x = PT(objGpet,m, subset_i)
-            
+
             %full/sub-backprojection
             if nargin <3
                 angles = 1:objGpet.sinogram_size.nAnglesBins;
@@ -230,7 +230,7 @@ classdef classGpet < handle
                 disp('todo: shift-var')
             end
         end
-        
+
         function x = ones(objGpet)
             x = ones(objGpet.image_size.matrixSize);
         end
@@ -258,7 +258,7 @@ classdef classGpet < handle
             objGpet.sinogram_size.matrixSize = [objGpet.sinogram_size.nRadialBins objGpet.sinogram_size.nAnglesBins objGpet.sinogram_size.nSinogramPlanes];
             objGpet.osem_subsets(objGpet.nSubsets, objGpet.sinogram_size.nAnglesBins);
         end
-        
+
         function G_2D_mMR_setup(objGpet)
             if isempty(objGpet.sinogram_size)
                 objGpet.sinogram_size.nRadialBins = 344;
@@ -268,7 +268,7 @@ classdef classGpet < handle
                 objGpet.sinogram_size.nSeg = 1;
 %                 objGpet.radialBinTrim = 0;
             else
-                
+
             end
             if isempty(objGpet.nSubsets)
                 objGpet.nSubsets = 21;
@@ -279,11 +279,11 @@ classdef classGpet < handle
             objGpet.sinogram_size.matrixSize = [objGpet.sinogram_size.nRadialBins objGpet.sinogram_size.nAnglesBins objGpet.sinogram_size.nSinogramPlanes];
             objGpet.image_size.matrixSize =[344, 344, 1];
             objGpet.image_size.voxelSize_mm = [2.08626 2.08626 2.03125];
-            
+
             objGpet.osem_subsets(objGpet.nSubsets, objGpet.sinogram_size.nAnglesBins);
-            
+
         end
-        
+
         function G_mMR_setup(objGpet)
             % Default parameter, only if it havent been loaded by the
             % config previously:
@@ -297,7 +297,7 @@ classdef classGpet < handle
                 objGpet.sinogram_size.nSeg = 11;
 %                 objGpet.radialBinTrim = 0;
             else
-                
+
             end
             if isempty(objGpet.nSubsets)
                 objGpet.nSubsets = 21;
@@ -305,14 +305,14 @@ classdef classGpet < handle
             if isempty(objGpet.nIter)
                 objGpet.nIter = 3;
             end
-            
+
             objGpet.sinogram_size.matrixSize = [objGpet.sinogram_size.nRadialBins objGpet.sinogram_size.nAnglesBins objGpet.sinogram_size.nSinogramPlanes];
             objGpet.image_size.matrixSize =[344, 344, 127];
             objGpet.image_size.voxelSize_mm = [2.08626 2.08626 2.03125];
-            
+
             objGpet.osem_subsets(objGpet.nSubsets, objGpet.sinogram_size.nAnglesBins);
         end
-        
+
         function  osem_subsets(objGpet, nsub,nAngles)
             if nsub==nAngles
                 objGpet.sinogram_size.subsize = 1;
@@ -324,16 +324,16 @@ classdef classGpet < handle
                 end
                 return
             end
-            
+
             if rem(nAngles/nsub,2)~=0
                 i = 1:nAngles/2;
                 j = ~mod(nAngles/2./i,1);
                 error(['Choose a valid subset: '  sprintf('%d ',i(j))])
             end
-            
+
             objGpet.sinogram_size.subsize = nAngles /nsub;
             objGpet.sinogram_size.subsets = zeros(objGpet.sinogram_size.subsize, nsub);
-            
+
             for j = 1:nsub
                 k = 0;
                 for i = j:nsub:nAngles/2
@@ -342,30 +342,30 @@ classdef classGpet < handle
                     objGpet.sinogram_size.subsets(k+objGpet.sinogram_size.subsize/2,j) = i+nAngles/2;
                 end
             end
-            
+
             s = objGpet.sinogram_size.subsets;
             st = 1 + bit_reverse(nsub);
             for i= 1:nsub
                 objGpet.sinogram_size.subsets(:,i) = s(:,st(i));
             end
         end
-        
+
         function set_subsets(objGpet, numSubsets)
             % Update number of iteration to keep the subset%iterations
             % constant:
             objGpet.nIter = objGpet.nIter*objGpet.nSubsets/numSubsets;
             objGpet.nSubsets = numSubsets;
-            
+
             objGpet.osem_subsets(objGpet.nSubsets, objGpet.sinogram_size.nAnglesBins);
         end
- 
+
         function init_sinogram_size(objGpet, inSpan, numRings, maxRingDifference)
             objGpet.sinogram_size.span = inSpan;
             objGpet.sinogram_size.nRings = numRings;
             objGpet.sinogram_size.maxRingDifference = maxRingDifference;
             % Number of planes mashed in each plane of the sinogram:
             objGpet.sinogram_size.numPlanesMashed = [];
-            
+
             % Number of planes in odd and even segments:
             numPlanesOdd = floor(objGpet.sinogram_size.span/2);
             numPlanesEven = ceil(objGpet.sinogram_size.span/2);
@@ -406,11 +406,11 @@ classdef classGpet < handle
                     objGpet.sinogram_size.maxRingDiffs(objGpet.sinogram_size.nSeg) = objGpet.sinogram_size.maxRingDiffs(objGpet.sinogram_size.nSeg-2) - objGpet.sinogram_size.span;
                 end
             end
-            
+
             % Ahora determino la cantidad de sinogramas por segmentos, recorriendo cada
             % segmento:
             objGpet.sinogram_size.nPlanesPerSeg = zeros(1,objGpet.sinogram_size.nSeg);
-            
+
             for segment = 1 : objGpet.sinogram_size.nSeg
                 % Por cada segmento, voy generando los sinogramas correspondientes y
                 % contándolos, debería coincidir con los sinogramas para ese segmento:
@@ -445,14 +445,14 @@ classdef classGpet < handle
             end
             objGpet.sinogram_size.nSinogramPlanes = sum(objGpet.sinogram_size.nPlanesPerSeg);
             objGpet.sinogram_size.matrixSize = [objGpet.sinogram_size.nRadialBins objGpet.sinogram_size.nAnglesBins objGpet.sinogram_size.nSinogramPlanes];
-            
+
         end
-     %}   
+     %}
      function objGpet=init_image_properties(objGpet, refImage)
          objGpet.image_size.matrixSize = refImage.ImageSize;
          objGpet.image_size.voxelSize_mm = [refImage.PixelExtentInWorldY refImage.PixelExtentInWorldX refImage.PixelExtentInWorldZ];
      end
-     
+
      function n=NCF(varargin)
          objGpet = varargin{1};
          if ~strcmpi(objGpet.scanner,'mMR')
@@ -470,9 +470,9 @@ classdef classGpet < handle
              n = overall_ncf_3d;
          end
      end
-     
+
      function g = init_precomputed_G (objGpet)
-         
+
              if isempty (objGpet.tempPath) || (~isempty (objGpet.tempPath)&& ~exist([objGpet.tempPath '\gantry_model_info.mat'],'file'))
                  opt.span       = objGpet.sinogram_size.span;
                  opt.nseg       = objGpet.sinogram_size.nSeg;
@@ -484,14 +484,14 @@ classdef classGpet < handle
                  fprintf('System matrix pre-computation:...\n')
                  fprintf('Span: %d, nSeg: %d, imMatrix: %d x %d x %d\n', opt.span,opt.nseg,opt.iRows,opt.iColumns, opt.iSlices )
                  g = Biograph_mMR_S02(opt);
-                 
+
                  if isempty (objGpet.tempPath)
                      objGpet.tempPath = g.Dir;
                  end
              else
                  g = load ([objGpet.tempPath '\gantry_model_info.mat']); g = g.g;
              end
-             
+
              if isempty (objGpet.Geom)
                  fprintf('Load pre-computed parts of system matrix into Geom...');
                  objGpet.Geom  = cell(1,length(g.AxialSymPlanes));
@@ -505,7 +505,7 @@ classdef classGpet < handle
      end
 
      function lambda = Project_preComp(objGpet,X,g,Angles,RadialBins,dir)
-         
+
          if size(X,3)==1 % 2D projection
              nAxialSymPlanes = 1;
              nonSymPlanes = {1};
@@ -519,34 +519,34 @@ classdef classGpet < handle
                  nonSymPlanes{i} = find(g.AxialSym_pmt(:,1) == i);
              end
          end
-         
+
          if dir ==-1 % back-projection
              lambda = zeros(g.iRows*g.iColumns*g.iSlices,1,'single');
              X(isnan(X))=0;
          elseif dir==1 % forward-projection
              lambda = zeros(g.nRad,g.nAng,g.nPlanes,'single');
          end
-         
+
          for I = 1: nAxialSymPlanes
              P = objGpet.Geom{I}; % load the part of the system matrix covering Ith group of sino planes
-             
+
              for p_idx = 1:length(nonSymPlanes{I}) %loop over planes with symmetric system matrix
                  plane = nonSymPlanes{I}(p_idx);
                  p = g.AxialSym_pmt(plane,:);
-                 
+
                  for a_idx = 1:length(Angles)/2 % loop over angular bins
                      ang = Angles(a_idx);
                      symAng = ang + g.nAng/2;
-                     
+
                      for b_idx = 1:length(RadialBins) % loop over radial bins
                          bin = RadialBins(b_idx);
-                         
+
                          M = double(P{ang,bin});
                          temp = (g.iRows*g.iColumns* (p(2)*M(:,3)+ p(3)));
                          ind1 = M(:,1)+1 + g.iRows*(g.iRows-1-M(:,2))+ temp;
                          ind2 = M(:,2)+1 + g.iRows*(M(:,1))+ temp;
                          G = M(:,4)/1e4;
-                         
+
                          if dir==-1 % back-projection
                              lambda(ind1) = lambda(ind1) + G*X(bin,ang,plane);%
                              lambda(ind2) = lambda(ind2) + G*X(bin,symAng,plane);%
@@ -554,24 +554,24 @@ classdef classGpet < handle
                              lambda(bin,ang,plane) = G'*X(ind1);%
                              lambda(bin,symAng,plane) = G'*X(ind2);%
                          end
-                         
+
                      end
                  end
              end
          end
-         
+
          if dir ==-1 % back-projection
              lambda = reshape(lambda, g.iRows,g.iColumns,g.iSlices);
          end
-         
-         
+
+
      end
-     
+
     end
 end
 
-    
-    
+
+
 
 
 

@@ -1,5 +1,5 @@
 %% EXAMPLE MLEM MARTIN PROJECTOR (ANY SPAN)
-clear all 
+clear all
 close all
 %% CONFIGURE PATHS
 % Check what OS I am running on:
@@ -33,7 +33,7 @@ randomsBinaryFilename = [root,'\e7\data-Converted\data-00\rawdata_sino\smoothed_
 % acfHumanBinaryFilename = [root,'\e7\data-Converted\data-00\rawdata_sino\acf_second_00.a'];
 % ncfBinaryFilname = [root,'\e7\data-Converted\data-00\rawdata_sino\norm3d_00.a'];
 t1DicomPath = [root,'\MPRAGE_image\'];
-    
+
 
 %% INIT CLASS GPET
 param.scanner = 'mMR';

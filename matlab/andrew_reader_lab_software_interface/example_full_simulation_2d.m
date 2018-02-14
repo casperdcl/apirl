@@ -1,5 +1,5 @@
 %% EXAMPLE MLEM MARTIN PROJECTOR (ANY SPAN)
-clear all 
+clear all
 close all
 set_framework_environment();
 % set_framework_environment(basePath, binaryPath);
@@ -59,7 +59,7 @@ scale_factor = counts*truesFraction/sum(y(:));
 y_poisson = poissrnd(y.*scale_factor);
 
 % Additive factors:
-r = PET.R(counts*randomsFraction); 
+r = PET.R(counts*randomsFraction);
 %r = PET.R(delayedSinogram_2d);  % Without a delayed sinograms, just
 scale_factor_randoms = counts*randomsFraction./sum(r(:));
 % Poisson distribution:

@@ -1,5 +1,5 @@
 %% EXAMPLE MLEM MARTIN PROJECTOR (ANY SPAN)
-clear all 
+clear all
 close all
 set_framework_environment();
 % set_framework_environment(basePath, binaryPath);
