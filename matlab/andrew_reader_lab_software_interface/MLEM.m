@@ -108,13 +108,11 @@ y = PETp.P(tAct);
 if mod(i, 2)
 recon = do_recon(PETp, nitersPsf, y, y_poisson, n, ncf, acf, ...
   tMu, refAct, counts, truesFraction, randomsFraction, scatterFraction);
-disp(noise_realisation);
-%save(['output/reconMLEMPSF' num2str(noise_realisation) '.mat'], 'recon')
 else
 recon = do_recon(PETm, nitersMlem, y, y_poisson, n, ncf, acf, ...
   tMu, refAct, counts, truesFraction, randomsFraction, scatterFraction);
-%save(['output/reconMLEM' num2str(noise_realisation) '.mat'], 'recon')
 end
+disp(noise_realisation);
 
 %reconMLEM{noise_realisation} = recon;
 reconMLEM{i + 1} = recon;
