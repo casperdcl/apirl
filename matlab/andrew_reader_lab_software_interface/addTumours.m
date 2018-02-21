@@ -41,18 +41,17 @@ if numT > 0
         [z, y, x, rSmall, maxScale, sigma]), 1/pad);
   end
 else
-  switch numT
-  case -2
+  if numT == -2
   tBig = [0.5, 0.45, 0.4, rSmall*2.0, maxScale, sigma];
   tSmall = [0.5, 0.475, 0.55, rSmall, maxScale, sigma];
   tBigBlur = [0.5, 0.625, 0.55, tBig(4), maxScale, sigma + tBig(4)/3.0];
   tBiggest = [0.5, 0.625, 0.45, rSmall*3.0, maxScale, sigma];
-  default
+  else
   tBig = [0.5, 0.45, 0.43, rSmall*2.0, maxScale, sigma];
   tSmall = [0.5, 0.53, 0.57, rSmall, maxScale, sigma];
   tBigBlur = [0.5, 0.625, 0.43, tBig(4), maxScale, sigma + tBig(4)/3.0];
   tBiggest = [0.5, 0.5, 0.46, rSmall*3.0, maxScale, sigma];
-  end  % switch numT
+  end  % numT
 
   im3d = max(im3d, tumour(d, h, w, m, tBig, 1/pad));
   im3d = max(im3d, tumour(d, h, w, m, tSmall, 1/pad));
