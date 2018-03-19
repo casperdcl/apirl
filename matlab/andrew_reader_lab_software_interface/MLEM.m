@@ -103,7 +103,7 @@ PETp = init_recon(PETp, refAct, span, numRings, maxRingDifference);
 %tActRD = PET.Gauss3DFilter(tAct, PET.PSF.Width);
 y = PETp.P(tAct);
 [ncf, acf, n, y, y_poisson] = poisson_recon(...
-  PETp, tMu, refAct, y, counts, truesFraction)
+  PETp, tMu, refAct, y, counts, truesFraction);
 
 if mod(i, 2)
 recon = do_recon(PETp, nitersPsf, y, y_poisson, n, ncf, acf, ...
@@ -112,6 +112,7 @@ else
 recon = do_recon(PETm, nitersMlem, y, y_poisson, n, ncf, acf, ...
   tMu, refAct, counts, truesFraction, randomsFraction, scatterFraction);
 end
+rmdir(PETmlem.tempPath, 's');
 disp(noise_realisation);
 
 %reconMLEM{noise_realisation} = recon;
