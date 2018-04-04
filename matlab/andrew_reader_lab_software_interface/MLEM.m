@@ -14,6 +14,7 @@ numTumours = -1
 
 subj = 'subject_04';
 counts = 500e6;
+numTumours = -1;
 if nargin > 3, subj = varargin{1}; end
 if nargin > 4, counts = varargin{2}; end
 if nargin > 5, numTumours = varargin{3}; end
@@ -27,13 +28,22 @@ set_framework_environment();
 %[sinogram, delayedSinogram, structSizeSino3d] = interfileReadSino('E:\PatientData\FDG\PETSinoPlusUmap-Converted\PETSinoPlusUmap-00\PETSinoPlusUmap-00-sino-uncomp.s.hdr');
 %load BrainMultiMaps_mMR.mat;
 addpath('brainweb.raws/')
-MultiMaps_Ref = readPetMr(fsSigma, fsPet, fsT1, subj);
+if strfind(subj, 'AD_')
+  MultiMaps_Ref = load(['reconAPIRL_real-' subj '.mat'], ['reconAPIRL']);
+  MultiMaps_Ref = MultiMaps_Ref.reconAPIRL;
+  MultiMaps_Ref.uMap = reshape(fread(fopen(['data-LM-00-umap-' subj '.v']), 'single'), [344 344 127]);
+  MultiMaps_Ref.PET = permute(MultiMaps_Ref.PET, [2 1 3]);
+  MultiMaps_Ref.T1 = permute(MultiMaps_Ref.T1, [2 1 3]);
+else
+  MultiMaps_Ref = readPetMr(fsSigma, fsPet, fsT1, subj);
+end
 %%
 tAct = permute(MultiMaps_Ref.PET, [2 1 3]);
 tAct = tAct(end:-1:1,:,:);
-% tumours
-tAct = permute(addTumours(permute(tAct, [3 2 1]), ...
-                          344*2.08626, 5, 1.5, numTumours), [3 2 1]);
+if numTumours
+  tAct = permute(addTumours(permute(tAct, [3 2 1]), ...
+                            344*2.08626, 5, 1.5, numTumours), [3 2 1]);
+end
 tMu = permute(MultiMaps_Ref.uMap, [2 1 3]);
 tMu = tMu(end:-1:1,:,:);
 pixelSize_mm = [2.08625 2.08625 2.03125];

@@ -2,7 +2,7 @@ function im3d = addTumours(im3d, wmm, varargin)
 % im3d  : 3-dimesional matrix.
 % wmm  : `im3d` width in mm.
 %% VARARGS
-% diam  : minimum tumour diameter [default: 6mm].
+% diam  : minimum tumour diameter [default: 5mm].
 % maxScale  : max(im3d(:)) * `maxScale` is tumour intensity [default: 1.5].
 % num  : number of tumours (implies const diameter specified) [default: 0].
 % sigma  : minimum blur for tumours [default: 0mm].
