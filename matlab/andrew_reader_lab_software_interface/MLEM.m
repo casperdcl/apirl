@@ -27,22 +27,30 @@ set_framework_environment();
 %% SIMULATE A BRAIN PHANTOM WITH ATTENUATION, NORMALIZATION, RANDOMS AND SCATTER
 %[sinogram, delayedSinogram, structSizeSino3d] = interfileReadSino('E:\PatientData\FDG\PETSinoPlusUmap-Converted\PETSinoPlusUmap-00\PETSinoPlusUmap-00-sino-uncomp.s.hdr');
 %load BrainMultiMaps_mMR.mat;
-addpath('brainweb.raws/')
 if strfind(subj, 'AD_')
+  addpath('output/')
   MultiMaps_Ref = load(['reconAPIRL_real-' subj '.mat'], ['reconAPIRL']);
   MultiMaps_Ref = MultiMaps_Ref.reconAPIRL;
   MultiMaps_Ref.uMap = reshape(fread(fopen(['data-LM-00-umap-' subj '.v']), 'single'), [344 344 127]);
+  MultiMaps_Ref.PET = MultiMaps_Ref.PET_psf_sharp;
   MultiMaps_Ref.PET = permute(MultiMaps_Ref.PET, [2 1 3]);
   MultiMaps_Ref.T1 = permute(MultiMaps_Ref.T1, [2 1 3]);
 else
+  addpath('brainweb.raws/')
   MultiMaps_Ref = readPetMr(fsSigma, fsPet, fsT1, subj);
 end
 %%
 tAct = permute(MultiMaps_Ref.PET, [2 1 3]);
 tAct = tAct(end:-1:1,:,:);
 if numTumours
-  tAct = permute(addTumours(permute(tAct, [3 2 1]), ...
-                            344*2.08626, 5, 1.5, numTumours), [3 2 1]);
+  if strfind(subj, 'AD_')
+    tIntensity = max(max(max(medfilt3(tAct, [1 1 1] .* 3)))) / max(tAct(:))
+    wmm = size(tAct, 1)*MultiMaps_Ref.voxelSize_mm(1);  % image width/[mm]
+    tAct = permute(addTumours(permute(tAct, [3 2 1]), wmm, 5, tIntensity, numTumours), [3 2 1]);
+  else
+    tAct = permute(addTumours(permute(tAct, [3 2 1]), ...
+                              344*2.08626, 5, 1.5, numTumours), [3 2 1]);
+  end
 end
 tMu = permute(MultiMaps_Ref.uMap, [2 1 3]);
 tMu = tMu(end:-1:1,:,:);
