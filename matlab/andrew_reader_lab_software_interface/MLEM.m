@@ -212,7 +212,8 @@ sensImage = PET.Sensitivity(anf);
 % additive term:
 additive = (r + s).*ncf.*acf; % (randoms +scatter)./(afs*nfs) = (randoms+scatter)+
 recon = PET.ones();
+opts.display = 1;
 recon = PET.OPOSEM(simulatedSinogram, additive, ...
-  sensImage, recon, ceil(niters/PET.nSubsets));
+  sensImage, recon, ceil(niters/PET.nSubsets), opts);
 %recon = PET.OPMLEM(simulatedSinogram, additive, sensImage, recon, niters);
 end  % function do_recon

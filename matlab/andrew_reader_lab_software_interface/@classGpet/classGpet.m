@@ -865,7 +865,9 @@ classdef classGpet < handle
             end
         end
         
-        function Img = OPOSEM(objGpet,Prompts,RS, SensImg,Img, nIter)
+        function Img = OPOSEM(objGpet,Prompts,RS, SensImg,Img, nIter, arg)
+            opt.display = 0;
+            opt = getFiledsFromUsersOpt(opt,arg);
             for i = 1:nIter
                 for j = 1:objGpet.nSubsets
                     % SAM ELLIS EDIT (18/07/2016): replaced vector divisions by vecDivision
@@ -873,6 +875,7 @@ classdef classGpet < handle
                     % Img = Img.*objGpet.PT(Prompts./(objGpet.P(Img,j)+ RS + 1e-5),j)./(SensImg(:,:,:,j)+1e-5);
                     Img = max(0,Img);
                 end
+                if opt.display, fprintf('\rIter: %4d/%4d\r', i, nIter); end
             end
         end
         
