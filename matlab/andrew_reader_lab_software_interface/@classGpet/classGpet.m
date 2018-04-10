@@ -867,8 +867,10 @@ classdef classGpet < handle
 
         function Img = OPOSEM(objGpet,Prompts,RS, SensImg,Img, nIter, arg)
             opt.display = 0;
+            opt.slice = 64;
             opt = getFiledsFromUsersOpt(opt,arg);
-            if opt.display, fprintf('\n'); t = tic; end
+            fprintf('\n');
+            t = tic;
             for i = 1:nIter
                 for j = 1:objGpet.nSubsets
                     % SAM ELLIS EDIT (18/07/2016): replaced vector divisions by vecDivision
@@ -876,9 +878,19 @@ classdef classGpet < handle
                     % Img = Img.*objGpet.PT(Prompts./(objGpet.P(Img,j)+ RS + 1e-5),j)./(SensImg(:,:,:,j)+1e-5);
                     Img = max(0,Img);
                 end
-                if opt.display, fprintf('Iter: %4d/%4d\r', i, nIter); end
+                msg = sprintf('Iter: %4d/%4d', i, nIter);
+                fprintf([msg '\r']);
+                if opt.display
+                  if mod(i, abs(opt.display)) == 0
+                    imshow(Img(:,:,opt.slice), []); title(msg);
+                  end
+                  if opt.display < 1,
+                    input('continue?');
+                  end
+                end
             end
-            if opt.display, fprintf('\n'); toc(t), end
+            fprintf('\n');
+            toc(t)
         end
 
         % SAM ELLIS EDIT: new sensitivity image for basis function
