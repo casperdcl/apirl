@@ -34,6 +34,7 @@ if strfind(subj, 'AD_')
   MultiMaps_Ref.uMap = reshape(fread(fopen(['data-LM-00-umap-' subj '.v']), 'single'), [344 344 127]);
   MultiMaps_Ref.PET = MultiMaps_Ref.PET_psf_sharp;
   MultiMaps_Ref.PET = permute(MultiMaps_Ref.PET, [2 1 3]);
+  MultiMaps_Ref.PET(MultiMaps_Ref.uMap < eps('single')) = 0;
   MultiMaps_Ref.T1 = permute(MultiMaps_Ref.T1, [2 1 3]);
 else
   addpath('brainweb.raws/')
