@@ -1,5 +1,5 @@
 %  *********************************************************************
-%  Reconstruction Framework for Siemens Biograph mMR.
+%  Reconstruction Framework for Siemens Biograph mMR.  
 %  Autor: Martín Belzunce. Kings College London.
 %  Fecha de Creación: 22/12/2015
 %  *********************************************************************
@@ -11,20 +11,16 @@
 % It returns the image resized to the standard PET mMR image size, and
 % an attenuation map.
 
-function [pet_rescaled, mumap_rescaled, t1_rescaled, t2_rescaled, ...
-  classified_tissue_rescaled, refImage] ...
-  = CreateBrainPhantom(binaryFilename, imageSize_pixels, pixelSize_mm)
+function [pet_rescaled, mumap_rescaled, t1_rescaled, t2_rescaled, classified_tissue_rescaled, refImage] = CreateBrainPhantom(binaryFilename, imageSize_pixels, pixelSize_mm)
 %% PARAMETERS
 imageSizePhantom_pixels = [362 434 362];
 pixelSizePhantom_mm = [0.5 0.5 0.5];
 if nargin == 1
     % set the default pixel value and matrix size:
     % Size of the pixels:
-    %pixelSize_mm = [0.5 0.5 0.5];
-    pixelSize_mm = [2.08625 2.08625 2.03125];
+    pixelSize_mm = [0.5 0.5 0.5];
     % The size in pixels:
-    %imageSize_pixels = [362 434 362];
-    imageSize_pixels = [344 344 127];
+    imageSize_pixels = [362 434 362];
 end
 %% READ BINARY IMAGE
 % Read image:
@@ -34,7 +30,7 @@ if fid == -1
 end
 phantom = fread(fid, imageSizePhantom_pixels(1)*imageSizePhantom_pixels(2)*imageSizePhantom_pixels(3), 'uint16');
 phantom = reshape(phantom, imageSizePhantom_pixels);
-% Then interchange rows and cols, x and y:
+% Then interchange rows and cols, x and y: 
 phantom = permute(phantom, [2 1 3]);
 phantom = phantom(end:-1:1,:,end:-1:1);
 fclose(fid);
@@ -68,7 +64,7 @@ mumap(indicesBone) = mu_bone_1_cm;
 
 %% TRANSFORM THE ATANOMY INTO PET SIGNALS
 whiteMatterAct = 32;
-grayMatterAct = whiteMatterAct * 4;
+grayMatterAct = 128;
 skinAct = 16;
 pet = phantom;
 pet(indicesWhiteMatter) = whiteMatterAct;

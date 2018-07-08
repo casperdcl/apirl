@@ -54,10 +54,9 @@ fprintf(fid,'%%DATA MATRIX DESCRIPTION:=\n');
 fprintf(fid,'number of time frames:=1\n');
 fprintf(fid,'%%number of horizontal bed offsets:=1\n');
 fprintf(fid,'number of time windows:=1\n');
-fprintf(fid,'%%number of emission data types:=%d\n',info.TotalNumberOfDataSets);
-
 
 if isfield(info,'NumberOfScanDataTypes') && info.NumberOfScanDataTypes==2
+    fprintf(fid,'%%number of emission data types:=%d\n',info.NumberOfScanDataTypes);
     fprintf(fid,'%%emission data type description [1]:=%s\n',info.ScanDataTypeDescription1);
     fprintf(fid,'%%emission data type description [2]:=%s\n',info.ScanDataTypeDescription2);
     fprintf(fid,'%%number of transmission data types:=0\n');

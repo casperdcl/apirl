@@ -13,7 +13,11 @@
 %
 %  Example:
 %   [resampledImage, refResampledImage] = ImageResample(image, refImage, newRefImage)
-function [resampledImage, refResampledImage] = ImageResample(image, refImage, newRefImage)
+function [resampledImage, refResampledImage] = ImageResample(image, refImage, newRefImage, interpolation)
+
+if nargin < 4
+    interpolation = 'linear';
+end
 
 if numel(refImage.ImageSize) == 3
     % Coordiantes of the input image:
@@ -31,7 +35,7 @@ if numel(refImage.ImageSize) == 3
     [xOut_mm, yOut_mm, zOut_mm] = meshgrid(xCoordOut_mm, yCoordOut_mm, zCoordOut_mm);
 
     % Interpolate the image to the new coordinate system:
-    resampledImage = interp3(xIn_mm,yIn_mm,zIn_mm,double(image),xOut_mm,yOut_mm,zOut_mm, 'linear',0);
+    resampledImage = interp3(xIn_mm,yIn_mm,zIn_mm,double(image),xOut_mm,yOut_mm,zOut_mm, interpolation,0);
     resampledImage(isnan(resampledImage)) = 0;
     refResampledImage = newRefImage;
 
@@ -49,7 +53,7 @@ else
     [xOut_mm, yOut_mm] = meshgrid(xCoordOut_mm, yCoordOut_mm);
 
     % Interpolate the image to the new coordinate system:
-    resampledImage = interp2(xIn_mm,yIn_mm,double(image),xOut_mm,yOut_mm, 'linear',0);
+    resampledImage = interp2(xIn_mm,yIn_mm,double(image),xOut_mm,yOut_mm, interpolation,0);
     resampledImage(isnan(resampledImage)) = 0;
     refResampledImage = newRefImage;
 end

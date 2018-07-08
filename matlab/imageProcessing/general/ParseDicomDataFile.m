@@ -9,9 +9,10 @@ function out = ParseDicomDataFile(directory,report)
 if nargin==1, report = 0; end
 d = dir(directory);
 
-[Sinograms,listModes,NormFiles] = deal(struct('hdr',[]));
+[Sinograms,listModes,listModeLarges,NormFiles] = deal(struct('hdr',[]));
 nSinograms = 0;
 nListModes = 0;
+nListModeLarges = 0;
 nNormFiles = 0;
 Unclassified = 0;
 if(strcmp(computer(), 'GLNXA64'))
@@ -46,6 +47,16 @@ for i= 3:length(d)
             case lower('MRPETLM')
                 nListModes = nListModes + 1;
                 listModes(nListModes).hdr = getInterfileHdrFromDicom(dicomHdr);
+            case lower('MRPETLM_LARGE')
+                nListModeLarges = nListModeLarges + 1;
+                listModeLarges(nListModeLarges).hdr = getInterfileHdrFromDicom(dicomHdr);
+                % And add the binary filename:
+                bfFileName = [directory bar name '.bf'];
+                if exist(bfFileName)
+                    listModeLarges(nListModeLarges).bf = bfFileName;
+                else
+                    error('List mode large file format header found, but the binary file (.bf) is not present in the folder.' );
+                end
             case lower('MRPETNORM')
                 nNormFiles = nNormFiles + 1;
                 NormFiles(nNormFiles).hdr = getInterfileHdrFromDicom(dicomHdr);
@@ -63,11 +74,14 @@ out.nSinograms = nSinograms;
 out.listModeHdrs = listModes;
 out.nListModes = nListModes;
 
+out.listModeLargeHdrs = listModeLarges;
+out.nListModeLarges = nListModeLarges;
+
 out.NormFileHdrs = NormFiles;
 out.nNormFiles = nNormFiles;
 
 out.Unclassified = Unclassified;
     
 if report
-    fprintf('DICOM Files: %d Sinograms, %d ListModeFiles, %d NormFiles\n',nSinograms, nListModes,nNormFiles);
+    fprintf('DICOM Files: %d Sinograms, %d ListModeFiles, %d ListModeLargeFiles, %d NormFiles\n',nSinograms, nListModes, nListModeLarges, nNormFiles);
 end
