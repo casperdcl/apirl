@@ -2,7 +2,8 @@
 i=0;
 %for subj = [5, 20]
 %for dose = [0.1, 1, 10, -1, .7, 0.2, 0.4]
-for tumours = [0 1]
+%for tumours = [0 1]
+for tumours = [0]
 for subj = [1, 2]
 for dose = [0.1, 0.7]
 i = i + 1
