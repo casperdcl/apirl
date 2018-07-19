@@ -20,10 +20,11 @@ im3d = permute(addTumours(permute(im3d, [3 2 1]), wmm, 5, tIntensity, tVersion),
 %}
 
 figure(1);
-[ha, pos] = tight_subplot(1,3,[.01 .01],[.01 .01],[.01 .01]);
-axes(ha(1)); imshow(1-sieves(110:end-120,120:end-120,64), []), title('(a)')
-axes(ha(2)), imshow(reconAPIRL.T1(110:end-120,120:end-120,64), []), title('(b)')
-axes(ha(3)), imshow(1-im3d(110:end-120,120:end-120,64), []), title('(c)')
+[ha, pos] = tight_subplot(2, 2,[.02 .01],[.01 .02],[.01 .01]);
+axes(ha(1)), imshow(1-reconAPIRL.PET(110:end-120,120:end-120,64), []), title('(a) MLEM')
+axes(ha(2)); imshow(1-sieves(110:end-120,120:end-120,64), []), title('(b) sieves')
+axes(ha(3)), imshow(1-im3d(110:end-120,120:end-120,64), []), title('(c) sharpened')
+axes(ha(4)), imshow(reconAPIRL.T1(110:end-120,120:end-120,64), []), title('(d) T1')
 %set(ha(1:4),'XTickLabel',''); set(ha,'YTickLabel','')
 saveas(gcf, 'foo.png')
 input('continue? ');
