@@ -868,6 +868,7 @@ classdef classGpet < handle
         function Img = OPOSEM(objGpet,Prompts,RS, SensImg,Img, nIter, arg)
             opt.display = 0;
             opt.slice = 64;
+            opt.prefix = '';
             opt = getFiledsFromUsersOpt(opt,arg);
             fprintf('\n');
             t = tic;
@@ -880,6 +881,9 @@ classdef classGpet < handle
                 end
                 msg = sprintf('Iter: %4d/%4d', i, nIter);
                 fprintf([msg '\r']);
+                if opt.prefix
+                  save([opt.prefix sprintf('_%03d', i) '.mat'], 'Img', '-v7.3');
+                end
                 if opt.display
                   if mod(i, abs(opt.display)) == 0
                     imshow(Img(:,:,opt.slice), []); title(msg);

@@ -9,15 +9,21 @@ fsSigma = 0, fsPet = 0.4, fsT1 = 0.2
 subj = 'subject_04'
 counts = 500e6
 numTumours = -1
+saveAll = ''
+use_gpus = [1 1 1]
 # Note that counts < 1 will perform noise-free reconstruction
 %}
 
 subj = 'subject_04';
 counts = 500e6;
 numTumours = -1;
+use_gpus = [1 1 1];
+saveAll = '';  % dir to save per-iter *.mat
 if nargin > 3, subj = varargin{1}; end
 if nargin > 4, counts = varargin{2}; end
 if nargin > 5, numTumours = varargin{3}; end
+if nargin > 6, saveAll = varargin{4}; end
+if nargin > 7, use_gpus = varargin{5}; end
 
 %% EXAMPLE MLEM MARTIN PROJECTOR (ANY SPAN)
 %clear all, close all
@@ -40,6 +46,7 @@ if strfind(subj, 'AD_')
 else
   addpath('brainweb.raws/')
   MultiMaps_Ref = readPetMr(fsSigma, fsPet, fsT1, subj);
+  extraInfo = '';
 end
 %%
 tAct = permute(MultiMaps_Ref.PET, [2 1 3]);
@@ -94,9 +101,20 @@ PET.sinogram_size.span = 11;
 %PET.verbosity = 1;
 PET.tempPath = '/dev/shm/cc16/temp/mlem';
 
+if strfind(subj, 'AD_')
+  metaStr = sprintf('_%s-C_%.3g_t%d', subj, counts, -numTumours);
+else
+  metaStr = sprintf('_%s-S_%.3g-NP_%.3g-NT1_%.3g-C_%.3g_t%d', ...
+      subj, fsSigma, fsPet, fsT1, counts, -numTumours);
+end
+
+if saveAll
+  save([saveAll '/real_PET'    extraInfo '_0' metaStr '_000.mat'], 'tAct', 'T1', 'tMu', '-v7.3');
+  save([saveAll '/real_PETpsf' extraInfo '_0' metaStr '_000.mat'], 'tAct', 'T1', 'tMu', '-v7.3');
+end
+
 %%
 %parpool('local', 6);
-use_gpus=[1 2 4] + 1;
 reconMLEM = cell(6, 1);
 %load('output/reconMLEM.mat')
 %load('output/reconMLEMPSF.mat')
@@ -108,7 +126,8 @@ gpuDevice(gpu);
 
 %%
 PETmlem = PET;
-PETmlem.tempPath = [PET.tempPath sprintf('%d%s%.3g%.3g%.3g%.3g', i, subj, counts, fsSigma, fsPet, fsT1) '/'];
+PETmlem.tempPath = [PET.tempPath strrep(saveAll, '/', '') ...
+  sprintf('%d%s%.3g%d%.3g%.3g%.3g', i, subj, counts, numTumours, fsSigma, fsPet, fsT1) '/'];
 PETpsf = PETmlem;
 PETpsf.PSF.Width = psfPSF;
 PETm = classGpet(PETmlem);
@@ -125,12 +144,27 @@ y = PETp.P(tAct);
 [ncf, acf, n, y, y_poisson] = poisson_recon(...
   PETp, tMu, refAct, y, counts, truesFraction);
 
+iPath = '';
 if mod(i, 2)
-recon = do_recon(PETp, nitersPsf, y, y_poisson, n, ncf, acf, ...
-  tMu, refAct, counts, truesFraction, randomsFraction, scatterFraction);
+  if saveAll
+    if strfind(subj, 'AD_')
+      iPath = [saveAll '/real_PETpsf'     extraInfo sprintf('_%d', i) metaStr];
+    else
+      iPath = [saveAll '/brainweb_PETpsf' extraInfo sprintf('_%d', i) metaStr];
+    end
+  end
+  recon = do_recon(PETp, nitersPsf, y, y_poisson, n, ncf, acf, ...
+    tMu, refAct, counts, truesFraction, randomsFraction, scatterFraction, iPath);
 else
-recon = do_recon(PETm, nitersMlem, y, y_poisson, n, ncf, acf, ...
-  tMu, refAct, counts, truesFraction, randomsFraction, scatterFraction);
+  if saveAll
+    if strfind(subj, 'AD_')
+      iPath = [saveAll '/real_PET'     extraInfo sprintf('_%d', i) metaStr];
+    else
+      iPath = [saveAll '/brainweb_PET' extraInfo sprintf('_%d', i) metaStr];
+    end
+  end
+  recon = do_recon(PETm, nitersMlem, y, y_poisson, n, ncf, acf, ...
+    tMu, refAct, counts, truesFraction, randomsFraction, scatterFraction, iPath);
 end
 rmdir(PETmlem.tempPath, 's');
 disp(noise_realisation);
@@ -149,15 +183,11 @@ reconAPIRL.mlem_psf = reconMLEM(2:2:end, :,:,:);
 reconAPIRL.voxelSize_mm = pixelSize_mm;
 reconAPIRL.psf_mm = [noPSFpsf, psfPSF];
 if strfind(subj, 'AD_')
-  save(['output/reconAPIRL_real' extraInfo ...
-        sprintf('_%s-C_%.3g_t%d', subj, counts, -numTumours) '.mat'], ...
-       'reconAPIRL', '-v7.3')
+  matOutName = ['output/reconAPIRL_real' extraInfo metaStr '.mat'];
 else
-  save(['output/reconAPIRL_brainweb' ...
-        sprintf('_%s-S_%.3g-NP_%.3g-NT1_%.3g-C_%.3g_t%d', ...
-                subj, fsSigma, fsPet, fsT1, counts, -numTumours) ...
-        '.mat'], 'reconAPIRL', '-v7.3')
+  matOutName = ['output/reconAPIRL_brainweb' extraInfo metaStr '.mat'];
 end
+save(matOutName, 'reconAPIRL', '-v7.3')
 
 end  % function MLEM
 
@@ -193,7 +223,9 @@ end  % poisson_recon
 
 
 function recon = do_recon(PET, niters, y, y_poisson, ...
-  n, ncf, acf, tMu, refAct, counts, truesFraction, randomsFraction, scatterFraction)
+  n, ncf, acf, tMu, refAct, ...
+  counts, truesFraction, randomsFraction, scatterFraction, ...
+  debugPrefix)
 
 % Additive factors:
 r = PET.R(abs(counts)*randomsFraction);
@@ -220,6 +252,7 @@ sensImage = PET.Sensitivity(anf);
 additive = (r + s).*ncf.*acf; % (randoms +scatter)./(afs*nfs) = (randoms+scatter)+
 recon = PET.ones();
 opts.display = 10;
+if debugPrefix, opts.prefix = debugPrefix; end
 recon = PET.OPOSEM(simulatedSinogram, additive, ...
   sensImage, recon, ceil(niters/PET.nSubsets), opts);
 %recon = PET.OPMLEM(simulatedSinogram, additive, sensImage, recon, niters);
