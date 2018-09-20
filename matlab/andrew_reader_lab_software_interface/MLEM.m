@@ -109,8 +109,13 @@ else
 end
 
 if saveAll
-  save([saveAll '/real_PET'    extraInfo '_0' metaStr '_000.mat'], 'tAct', 'T1', 'tMu', '-v7.3');
-  save([saveAll '/real_PETpsf' extraInfo '_0' metaStr '_000.mat'], 'tAct', 'T1', 'tMu', '-v7.3');
+  if strfind(subj, 'AD_')
+    save([saveAll '/real_PET'    extraInfo '_0' metaStr '_000.mat'], 'tAct', 'T1', 'tMu', '-v7.3');
+    save([saveAll '/real_PETpsf' extraInfo '_0' metaStr '_000.mat'], 'tAct', 'T1', 'tMu', '-v7.3');
+  else
+    save([saveAll '/brainweb_PET'    extraInfo '_0' metaStr '_000.mat'], 'tAct', 'T1', 'tMu', '-v7.3');
+    save([saveAll '/brainweb_PETpsf' extraInfo '_0' metaStr '_000.mat'], 'tAct', 'T1', 'tMu', '-v7.3');
+  end
 end
 
 %%
