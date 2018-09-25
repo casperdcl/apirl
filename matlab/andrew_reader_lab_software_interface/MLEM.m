@@ -108,16 +108,6 @@ else
       subj, fsSigma, fsPet, fsT1, counts, -numTumours);
 end
 
-if saveAll
-  if strfind(subj, 'AD_')
-    save([saveAll '/real_PET'    extraInfo '_0' metaStr '_000.mat'], 'tAct', 'T1', 'tMu', '-v7.3');
-    save([saveAll '/real_PETpsf' extraInfo '_0' metaStr '_000.mat'], 'tAct', 'T1', 'tMu', '-v7.3');
-  else
-    save([saveAll '/brainweb_PET'    extraInfo '_0' metaStr '_000.mat'], 'tAct', 'T1', 'tMu', '-v7.3');
-    save([saveAll '/brainweb_PETpsf' extraInfo '_0' metaStr '_000.mat'], 'tAct', 'T1', 'tMu', '-v7.3');
-  end
-end
-
 %%
 %parpool('local', 6);
 reconMLEM = cell(6, 1);
@@ -131,14 +121,14 @@ gpuDevice(gpu);
 
 %%
 PETmlem = PET;
-PETmlem.tempPath = [PET.tempPath strrep(saveAll, '/', '') ...
-  sprintf('%d%s%.3g%d%.3g%.3g%.3g', i, subj, counts, numTumours, fsSigma, fsPet, fsT1) '/'];
-PETpsf = PETmlem;
-PETpsf.PSF.Width = psfPSF;
+PETmlem.tempPath = [PET.tempPath strrep(saveAll, '/', '') num2str(i) metaStr '/'];
 PETm = classGpet(PETmlem);
-PETp = classGpet(PETpsf);
-
 PETm = init_recon(PETm, refAct, span, numRings, maxRingDifference);
+
+PETpsf = PET;
+PETpsf.tempPath = [PET.tempPath 'psf' strrep(saveAll, '/', '') num2str(i) metaStr '/'];
+PETpsf.PSF.Width = psfPSF;
+PETp = classGpet(PETpsf);
 PETp = init_recon(PETp, refAct, span, numRings, maxRingDifference);
 
 % Geometrical projection:
@@ -146,32 +136,32 @@ PETp = init_recon(PETp, refAct, span, numRings, maxRingDifference);
 %PET.Revise(options);
 %tActRD = PET.Gauss3DFilter(tAct, PET.PSF.Width);
 y = PETp.P(tAct);
-[ncf, acf, n, y, y_poisson] = poisson_recon(...
+[ncf, acf, n, y, y_poisson, scale_factor] = poisson_recon(...
   PETp, tMu, refAct, y, counts, truesFraction);
 
-iPath = '';
 if mod(i, 2)
-  if saveAll
-    if strfind(subj, 'AD_')
-      iPath = [saveAll '/real_PETpsf'     extraInfo sprintf('_%d', i) metaStr];
-    else
-      iPath = [saveAll '/brainweb_PETpsf' extraInfo sprintf('_%d', i) metaStr];
-    end
+  if strfind(subj, 'AD_')
+    iPath = [saveAll '/real_PETpsf'     extraInfo sprintf('_%d', i) metaStr];
+  else
+    iPath = [saveAll '/brainweb_PETpsf' extraInfo sprintf('_%d', i) metaStr];
   end
-  recon = do_recon(PETp, nitersPsf, y, y_poisson, n, ncf, acf, ...
-    tMu, refAct, counts, truesFraction, randomsFraction, scatterFraction, iPath);
+  PETreconClass = PETp;
+  nit = nitersPsf;
 else
-  if saveAll
-    if strfind(subj, 'AD_')
-      iPath = [saveAll '/real_PET'     extraInfo sprintf('_%d', i) metaStr];
-    else
-      iPath = [saveAll '/brainweb_PET' extraInfo sprintf('_%d', i) metaStr];
-    end
+  if strfind(subj, 'AD_')
+    iPath = [saveAll '/real_PET'     extraInfo sprintf('_%d', i) metaStr];
+  else
+    iPath = [saveAll '/brainweb_PET' extraInfo sprintf('_%d', i) metaStr];
   end
-  recon = do_recon(PETm, nitersMlem, y, y_poisson, n, ncf, acf, ...
-    tMu, refAct, counts, truesFraction, randomsFraction, scatterFraction, iPath);
+  PETreconClass = PETm;
+  nit = nitersMlem;
 end
+if saveAll, else iPath = ''; end
+if iPath, save([iPath '_000.mat'], 'tAct', 'T1', 'tMu', 'scale_factor', '-v7.3'); end
+recon = do_recon(PETreconClass, nit, y, y_poisson, n, ncf, acf, ...
+  tMu, refAct, counts, truesFraction, randomsFraction, scatterFraction, iPath);
 rmdir(PETmlem.tempPath, 's');
+rmdir(PETpsf.tempPath, 's');
 disp(noise_realisation);
 
 %reconMLEM{noise_realisation} = recon;
@@ -205,7 +195,7 @@ PET.init_sinogram_size(span, numRings, maxRingDifference);
 end  % function init_recon
 
 
-function [ncf, acf, n, y, y_poisson] = poisson_recon(...
+function [ncf, acf, n, y, y_poisson, scale_factor] = poisson_recon(...
   PET, tMu, refAct, y, counts, truesFraction)
 
 % Multiplicative correction factors:
@@ -219,9 +209,10 @@ n(n~=0) = 1./ n(n~=0); a(a~=0) = 1./ a(a~=0);
 % Introduce poission noise:
 y = y.*n.*a;
 scale_factor = abs(counts)*truesFraction/sum(y(:));
-y_poisson = y.*scale_factor;
 if counts > 0
   y_poisson = poissrnd(y.*scale_factor);
+else
+  y_poisson = y.*scale_factor;
 end
 
 end  % poisson_recon
