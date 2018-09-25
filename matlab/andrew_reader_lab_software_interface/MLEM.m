@@ -25,6 +25,7 @@ if nargin > 5, numTumours = varargin{3}; end
 if nargin > 6, saveAll = varargin{4}; end
 if nargin > 7, use_gpus = varargin{5}; end
 
+saveGnd = 0;  % needs `parfor` -> `for`
 %% EXAMPLE MLEM MARTIN PROJECTOR (ANY SPAN)
 %clear all, close all
 set_framework_environment();
@@ -157,18 +158,23 @@ else
   nit = nitersMlem;
 end
 if saveAll, else iPath = ''; end
-if iPath, save([iPath '_000.mat'], 'tAct', 'T1', 'tMu', 'scale_factor', '-v7.3'); end
-recon = do_recon(PETreconClass, nit, y, y_poisson, n, ncf, acf, ...
-  tMu, refAct, counts, truesFraction, randomsFraction, scatterFraction, iPath);
+if saveGnd
+  if iPath, save([iPath '_000.mat'], 'tAct', 'T1', 'tMu', 'scale_factor', '-v7.3'); end
+else
+  recon = do_recon(PETreconClass, nit, y, y_poisson, n, ncf, acf, ...
+    tMu, refAct, counts, truesFraction, randomsFraction, scatterFraction, iPath);
+  disp(noise_realisation);
+
+  %reconMLEM{noise_realisation} = recon;
+  reconMLEM{i + 1} = recon;
+end
 rmdir(PETmlem.tempPath, 's');
 rmdir(PETpsf.tempPath, 's');
-disp(noise_realisation);
-
-%reconMLEM{noise_realisation} = recon;
-reconMLEM{i + 1} = recon;
 
 end  % noise_realisation
 
+if saveGnd
+else
 reconMLEM = permute(reshape(cell2mat(reconMLEM), ...
   [344, 6, 344, 127]), [2 1 3 4]);
 reconAPIRL.PET = tAct;
@@ -183,6 +189,7 @@ else
   matOutName = ['output/reconAPIRL_brainweb' extraInfo metaStr '.mat'];
 end
 save(matOutName, 'reconAPIRL', '-v7.3')
+end  % saveGnd
 
 end  % function MLEM
 
