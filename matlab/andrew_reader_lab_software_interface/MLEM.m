@@ -174,6 +174,7 @@ rmdir(PETpsf.tempPath, 's');
 end  % noise_realisation
 
 if saveGnd
+reconAPIRL = 0;
 else
 reconMLEM = permute(reshape(cell2mat(reconMLEM), ...
   [344, 6, 344, 127]), [2 1 3 4]);
