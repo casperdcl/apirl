@@ -75,19 +75,19 @@ T1 = permute(MultiMaps_Ref.T1, [2 1 3]);
 T1 = T1(end:-1:1,:,:);
 
 % Change the span size:
-span = 11
+span = 11;
 numRings = 64;
 maxRingDifference = 60;
 
 % Counts to simulate:
-randomsFraction = 0.2  %.1
+randomsFraction = 0.2;  %.1
 scatterFraction = 0.2  %.35
 truesFraction = 1 - randomsFraction - scatterFraction;
 
 noPSFpsf = 2.5;
 psfPSF = 4.5;
-nitersMlem = 100
-nitersPsf = 300
+nitersMlem = 100;
+nitersPsf = 300;
 
 %% INIT CLASS GPET
 PET.scanner = 'mMR';
@@ -109,27 +109,31 @@ else
       subj, fsSigma, fsPet, fsT1, counts, -numTumours);
 end
 
+sfact = get_scale_factor(PET, saveAll, metaStr, psfPSF, refAct, ...
+  span, numRings, maxRingDifference, ...
+  tAct, tMu, counts, truesFraction);
+
 %%
-%parpool('local', 6);
-reconMLEM = cell(6, 1);
+NREALS = 10;
+%parpool('local', NREALS);
+reconMLEM = cell(NREALS, 1);
 %load('output/reconMLEM.mat')
 %load('output/reconMLEMPSF.mat')
-parfor i=0:5
+%for i=[0]
+parfor i=0:NREALS-1
 noise_realisation=1 + floor(i / 2);
 % N.B.: keep gpu const for each noise_realisation
 gpu = use_gpus(1 + mod(noise_realisation - 1, length(use_gpus)));
 gpuDevice(gpu);
 
 %%
-PETmlem = PET;
-PETmlem.tempPath = [PET.tempPath strrep(saveAll, '/', '') num2str(i) metaStr '/'];
-PETm = classGpet(PETmlem);
-PETm = init_recon(PETm, refAct, span, numRings, maxRingDifference);
+PETm = PET;
+PETm.tempPath = [PET.tempPath strrep(saveAll, '/', '') num2str(i) metaStr '/'];
 
-PETpsf = PET;
-PETpsf.tempPath = [PET.tempPath 'psf' strrep(saveAll, '/', '') num2str(i) metaStr '/'];
-PETpsf.PSF.Width = psfPSF;
-PETp = classGpet(PETpsf);
+PETp = PET;
+PETp.tempPath = [PET.tempPath 'psf' strrep(saveAll, '/', '') num2str(i) metaStr '/'];
+PETp.PSF.Width = psfPSF;
+PETp = classGpet(PETp);
 PETp = init_recon(PETp, refAct, span, numRings, maxRingDifference);
 
 % Geometrical projection:
@@ -154,6 +158,8 @@ else
   else
     iPath = [saveAll '/brainweb_PET' extraInfo sprintf('_%d', i) metaStr];
   end
+  PETm = classGpet(PETm);
+  PETm = init_recon(PETm, refAct, span, numRings, maxRingDifference);
   PETreconClass = PETm;
   nit = nitersMlem;
 end
@@ -168,8 +174,8 @@ else
   %reconMLEM{noise_realisation} = recon;
   reconMLEM{i + 1} = recon;
 end
-rmdir(PETmlem.tempPath, 's');
-rmdir(PETpsf.tempPath, 's');
+if exist(PETm.tempPath, 'dir'), rmdir(PETm.tempPath, 's'); end
+rmdir(PETp.tempPath, 's');
 
 end  % noise_realisation
 
@@ -177,17 +183,21 @@ if saveGnd
 reconAPIRL = 0;
 else
 reconMLEM = permute(reshape(cell2mat(reconMLEM), ...
-  [344, 6, 344, 127]), [2 1 3 4]);
+  [344, NREALS, 344, 127]), [2 1 3 4]);
 reconAPIRL.PET = tAct;
 reconAPIRL.T1 = T1;
+reconAPIRL.Mu = tMu;
+reconAPIRL.scale_factor = sfact;
 reconAPIRL.mlem = reconMLEM(1:2:end, :,:,:);
 reconAPIRL.mlem_psf = reconMLEM(2:2:end, :,:,:);
 reconAPIRL.voxelSize_mm = pixelSize_mm;
 reconAPIRL.psf_mm = [noPSFpsf, psfPSF];
-if strfind(subj, 'AD_')
-  matOutName = ['output/reconAPIRL_real' extraInfo metaStr '.mat'];
-else
-  matOutName = ['output/reconAPIRL_brainweb' extraInfo metaStr '.mat'];
+if strfind(subj, 'AD_'), matOutName = 'real';
+else, matOutName = 'brainweb';
+end
+matOutName = ['/reconAPIRL_' matOutName extraInfo metaStr '.mat'];
+if saveAll, matOutName = [saveAll matOutName];
+else, matOutName = ['output' matOutName];
 end
 save(matOutName, 'reconAPIRL', '-v7.3')
 end  % saveGnd
@@ -261,3 +271,17 @@ recon = PET.OPOSEM(simulatedSinogram, additive, ...
   sensImage, recon, ceil(niters/PET.nSubsets), opts);
 %recon = PET.OPMLEM(simulatedSinogram, additive, sensImage, recon, niters);
 end  % function do_recon
+
+function scale_factor = get_scale_factor(PET, saveAll, metaStr, psfPSF, refAct, ...
+  span, numRings, maxRingDifference, ...
+  tAct, tMu, counts, truesFraction)
+PETpsf = PET;
+PETpsf.tempPath = [PET.tempPath 'psf' strrep(saveAll, '/', '') 'sf' metaStr '/'];
+PETpsf.PSF.Width = psfPSF;
+PETp = classGpet(PETpsf);
+PETp = init_recon(PETp, refAct, span, numRings, maxRingDifference);
+y = PETp.P(tAct);
+[ncf, acf, n, y, y_poisson, scale_factor] = poisson_recon(...
+  PETp, tMu, refAct, y, counts, truesFraction);
+rmdir(PETpsf.tempPath, 's');
+end  % get_scale_factor
