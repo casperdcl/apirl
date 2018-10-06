@@ -11,21 +11,23 @@ counts = 500e6
 numTumours = -1
 saveAll = ''
 use_gpus = [1 1 1]
+saveGnd = 0;  % needs `parfor` -> `for`
 # Note that counts < 1 will perform noise-free reconstruction
 %}
 
 subj = 'subject_04';
 counts = 500e6;
 numTumours = -1;
-use_gpus = [1 1 1];
 saveAll = '';  % dir to save per-iter *.mat
+use_gpus = [1 1 1];
+saveGnd = 0;  % needs `parfor` -> `for`
 if nargin > 3, subj = varargin{1}; end
 if nargin > 4, counts = varargin{2}; end
 if nargin > 5, numTumours = varargin{3}; end
 if nargin > 6, saveAll = varargin{4}; end
 if nargin > 7, use_gpus = varargin{5}; end
+if nargin > 7, saveGnd = varargin{6}; end
 
-saveGnd = 0;  % needs `parfor` -> `for`
 %% EXAMPLE MLEM MARTIN PROJECTOR (ANY SPAN)
 %clear all, close all
 set_framework_environment();
