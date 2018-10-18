@@ -26,7 +26,7 @@ if nargin > 4, counts = varargin{2}; end
 if nargin > 5, numTumours = varargin{3}; end
 if nargin > 6, saveAll = varargin{4}; end
 if nargin > 7, use_gpus = varargin{5}; end
-if nargin > 7, saveGnd = varargin{6}; end
+if nargin > 8, saveGnd = varargin{6}; end
 
 %% EXAMPLE MLEM MARTIN PROJECTOR (ANY SPAN)
 %clear all, close all
@@ -116,7 +116,7 @@ sfact = get_scale_factor(PET, saveAll, metaStr, psfPSF, refAct, ...
   tAct, tMu, counts, truesFraction);
 
 %%
-NREALS = 10;
+if counts < 0, NREALS = 2; else NREALS = 10; end
 %parpool('local', NREALS);
 reconMLEM = cell(NREALS, 1);
 %load('output/reconMLEM.mat')
@@ -243,19 +243,27 @@ function recon = do_recon(PET, niters, y, y_poisson, ...
   counts, truesFraction, randomsFraction, scatterFraction, ...
   debugPrefix)
 
-% Additive factors:
-r = PET.R(abs(counts)*randomsFraction);
-%r = PET.R(delayedSinogram);  % Without a delayed sinograms, just
-scale_factor_randoms = abs(counts)*randomsFraction./sum(r(:));
-% Poisson distribution:
-%r = poissrnd(r.*scale_factor_randoms);
+if counts > 0
+  % Additive factors:
+  r = PET.R(abs(counts)*randomsFraction);
+  %r = PET.R(delayedSinogram);  % Without a delayed sinograms, just
+  %scale_factor_randoms = abs(counts)*randomsFraction./sum(r(:));
+  % Poisson distribution:
+  %r = poissrnd(r.*scale_factor_randoms);
+else
+  r = ones(PET.sinogram_size.matrixSize);
+  meanValue = (abs(counts)*randomsFraction)./numel(r);
+  r = r .* meanValue;
+  %scale_factor_randoms = abs(counts)*randomsFraction./sum(r(:));
+end
 
 counts_scatter = abs(counts)*scatterFraction;
 s_withoutNorm = PET.S(y);
 scale_factor_scatter = counts_scatter/sum(s_withoutNorm(:));
 s_withoutNorm = s_withoutNorm .* scale_factor_scatter;
 % noise for the scatter:
-s = poissrnd(s_withoutNorm.*n);
+s = s_withoutNorm.*n;
+if counts > 0, s = poissrnd(s); end
 % Add randoms and scatter@
 simulatedSinogram = y_poisson + s + r;
 
