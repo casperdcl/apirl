@@ -82,14 +82,22 @@ numRings = 64;
 maxRingDifference = 60;
 
 % Counts to simulate:
-randomsFraction = 0.2;  %.1
-scatterFraction = 0.2  %.35
+randomsFraction = 0.26  %.1
+scatterFraction = 0.28  %.35
 truesFraction = 1 - randomsFraction - scatterFraction;
 
 noPSFpsf = 2.5;
 psfPSF = 4.5;
-nitersMlem = 100;
-nitersPsf = 300;
+if counts < 0
+  nitersMlem = 999
+  nitersPsf = 999
+elseif counts < 100e6
+  nitersMlem = 100
+  nitersPsf = 300
+else
+  nitersMlem = 300
+  nitersPsf = 999
+end
 
 %% INIT CLASS GPET
 PET.scanner = 'mMR';
