@@ -12,6 +12,7 @@ numTumours = -1
 saveAll = ''
 use_gpus = [1 1 1]
 saveGnd = 0;  % needs `parfor` -> `for`
+subsets = 1
 # Note that counts < 1 will perform noise-free reconstruction
 %}
 
@@ -27,6 +28,7 @@ if nargin > 5, numTumours = varargin{3}; end
 if nargin > 6, saveAll = varargin{4}; end
 if nargin > 7, use_gpus = varargin{5}; end
 if nargin > 8, saveGnd = varargin{6}; end
+if nargin > 9, subsets = varargin{7}; end
 
 %% EXAMPLE MLEM MARTIN PROJECTOR (ANY SPAN)
 %clear all, close all
@@ -104,7 +106,7 @@ PET.scanner = 'mMR';
 PET.method =  'otf_siddon_gpu';
 PET.PSF.type = 'shift-invar';  % none
 PET.PSF.Width = noPSFpsf;
-PET.nSubsets = 1;
+PET.nSubsets = subsets;
 PET.radialBinTrim = 0;
 PET.Geom = '';
 PET.random_algorithm = 'from_ML_singles_matlab';
@@ -202,6 +204,8 @@ reconAPIRL.mlem = reconMLEM(1:2:end, :,:,:);
 reconAPIRL.mlem_psf = reconMLEM(2:2:end, :,:,:);
 reconAPIRL.voxelSize_mm = pixelSize_mm;
 reconAPIRL.psf_mm = [noPSFpsf, psfPSF];
+reconAPIRL.rndSctTru_frac = [randomsFraction, scatterFraction, truesFraction];
+reconAPIRL.counts = abs(counts);
 if strfind(subj, 'AD_'), matOutName = 'real';
 else, matOutName = 'brainweb';
 end
