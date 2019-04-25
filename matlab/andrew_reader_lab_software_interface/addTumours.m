@@ -29,11 +29,11 @@ if ~m, m = 1; end
 
 % NB: tumours specified by:
 % fractional positions d/h/w, radius/[w], value/[max], sigma/[w]
-pad = 1.5;  % place tumours in circle of diameter = 2 / (2+pad)
+pad = 6; %1.5;  % place tumours in circle of diameter = 2 / pad
 if numT > 0
   z = 0.5;
   for rt=rand([2 numT])
-    x, y = pol2cart(rt(1) *2*pi, rt(2));
+    [x, y] = pol2cart(rt(1) *2*pi, rt(2));
     % centre about 0.5
     y = (y + 1) / 2;
     x = (x + 1) / 2;
@@ -41,7 +41,19 @@ if numT > 0
         [z, y, x, rSmall, maxScale, sigma]), 1/pad);
   end
 else
-  if numT == -2
+  if numT == -3
+  p = [0:1/4:.999] + rand(1, 4) / 4;
+  p = p(randperm(4))*2*pi; % random angles in 4 quadrants
+  r = [0:1/4:.999] + rand(1, 4) / 4;  % random radii
+  [x, y] = pol2cart(p(1), r(1)); y = (y + 1) / 2; x = (x + 1) / 2;
+  tBig = [0.5, y, x, rSmall*2.0, maxScale, sigma];
+  [x, y] = pol2cart(p(2), r(2)); y = (y + 1) / 2; x = (x + 1) / 2;
+  tSmall = [0.5, y, x, rSmall, maxScale, sigma];
+  [x, y] = pol2cart(p(3), r(3)); y = (y + 1) / 2; x = (x + 1) / 2;
+  tBigBlur = [0.5, y, x, tBig(4), maxScale, sigma + tBig(4)/3.0];
+  [x, y] = pol2cart(p(4), r(4)); y = (y + 1) / 2; x = (x + 1) / 2;
+  tBiggest = [0.5, y, x, rSmall*3.0, maxScale, sigma];
+  elseif numT == -2
   tBig = [0.5, 0.45, 0.4, rSmall*2.0, maxScale, sigma];
   tSmall = [0.5, 0.475, 0.55, rSmall, maxScale, sigma];
   tBigBlur = [0.5, 0.625, 0.55, tBig(4), maxScale, sigma + tBig(4)/3.0];
