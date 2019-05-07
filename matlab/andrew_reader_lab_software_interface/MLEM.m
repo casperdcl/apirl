@@ -93,7 +93,7 @@ psfPSF = 4.5;
 if counts < 0
   nitersMlem = 999
   nitersPsf = 999
-elseif counts < 100e6
+elseif 1 % counts < 100e6
   nitersMlem = 100
   nitersPsf = 300
 else
