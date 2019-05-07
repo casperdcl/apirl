@@ -52,6 +52,11 @@ else
   addpath('brainweb.raws/')
   MultiMaps_Ref = readPetMr(fsSigma, fsPet, fsT1, subj);
   extraInfo = '';
+  if numTumours
+    % seed for subject-based rand tumour gen
+    seed = extractBetween(subj, 9, 10);
+    rng(str2num(seed{1}));
+  end
 end
 %%
 tAct = permute(MultiMaps_Ref.PET, [2 1 3]);
