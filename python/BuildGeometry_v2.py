@@ -1777,7 +1777,7 @@ class BuildGeometry_v2:
          out[np.isinf(out)]=0
          return out
 
-    def OSEM3D(self,prompts, AN = None, RS = 0, iSensImg = None, img = None, niter = 1, nsubs = 1, psf=0):
+    def OSEM3D(self,prompts, AN = None, RS = 0, iSensImg = None, img = None, niter = 1, nsubs = 1, psf=0, progress=True):
           import time
           if np.ndim(prompts)==3:
                batch_size = 1
@@ -1790,7 +1790,7 @@ class BuildGeometry_v2:
                     sino_shape = self.sinogram.shape
                AN = np.ones(sino_shape,dtype='float32')
           if iSensImg is None:
-               print(f'Calculate sensitivity image for {batch_size} sinograms and {nsubs} subsets\n')
+               print(f'Calculate sensitivity image for {batch_size} sinograms and {nsubs} subsets')
                iSensImg = self.iSensImageBatch3D(AN,nsubs,psf)
           if img is None:
                if batch_size>1:
@@ -1798,10 +1798,10 @@ class BuildGeometry_v2:
                else:
                     matrix_size = self.image.matrixSize
                img = np.ones(matrix_size,dtype='float32')
-          print(f'OSEM recon of {batch_size} sinograms. {niter} iters, {nsubs} nsubs \n')
+          print(f'OSEM recon of {batch_size} sinograms. {niter} iters, {nsubs} nsubs')
           tic = time.time()
-          for n in trange(niter):
-               for m in trange(nsubs, unit="sub"):
+          for n in trange(niter, disable=not progress):
+               for m in trange(nsubs, unit="sub", leave=False, disable=not progress):
                    if batch_size ==1:
                         iSenImg_m = iSensImg[m,:,:,:]
                    else:
