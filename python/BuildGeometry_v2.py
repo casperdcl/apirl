@@ -4,6 +4,7 @@ Created on Sun Apr 29 23:45:29 2018
 
 @author: abm15
 """
+from tqdm.auto import trange
 
 mct = {'model_number':          1104,
        'circularGantry':        1,
@@ -27,7 +28,7 @@ mct = {'model_number':          1104,
        'nTofBins':              13,
        'coinciWindowWidthNsec': 4.0625,
        'tofResolutionNsec':     0.580,
-       'tofOffsetNsec':         0.039            
+       'tofOffsetNsec':         0.039
        }
 
 mmr = {'model_number':          2008,
@@ -52,7 +53,7 @@ mmr = {'model_number':          2008,
        'nTofBins':              1,
        'coinciWindowWidthNsec': 5.85938,
        'tofResolutionNsec':     5.85938,
-       'tofOffsetNsec':         0          
+       'tofOffsetNsec':         0
        }
 
 
@@ -75,19 +76,19 @@ class BuildGeometry_v2:
         self.sinogram = dotStruct()
         self.engine = dotStruct()
         self.image = dotStruct()
-       
-        self.image.imgCropFactor = imgCropFactor       
-        
+
+        self.image.imgCropFactor = imgCropFactor
+        self.fov_mask = None
         if platform == "win32":
              self.engine.bar = '\\'
         else:
-             self.engine.bar = '/'        
-        
+             self.engine.bar = '/'
+
         if scannerModel.lower() == 'mct':
             self.__computeGantryInfo(mct)
         elif scannerModel.lower() == 'mmr':
             self.__computeGantryInfo(mmr)
-     
+
     def __computeGantryInfo(self,g):
         self.__load_gantry_dict(g)
         self.scanner.nCrystalsPerBlock = self.scanner.nPhysCrystalsPerBlock + self.scanner.useVirtualCrystal
@@ -99,12 +100,12 @@ class BuildGeometry_v2:
         self.scanner.effDetectorRadiusCm = self.scanner.detectorRadiusCm + self.scanner.LORDOIcm
         self.scanner.isTof = self.sinogram.nTofBins>1
         self.scanner.TofBinWidthNsec = self.scanner.coinciWindowWidthNsec/self.sinogram.nTofBins
-        self.scanner.planeSepCm = self.scanner.zCrystalDimCm/2.0        
+        self.scanner.planeSepCm = self.scanner.zCrystalDimCm/2.0
         self.sinogram.nAngularBins = self.scanner.nCrystalsPerRing//2//self.sinogram.nMash
         self.image.matrixSize = [self.sinogram.nRadialBins//self.image.imgCropFactor,self.sinogram.nRadialBins//self.image.imgCropFactor,2*self.scanner.nCrystalRings-1]
         self.image.voxelSizeCm = [self.scanner.xCrystalDimCm/2.0,self.scanner.xCrystalDimCm/2.0,self.scanner.planeSepCm]
         self.is3d = False
-        
+
     def __load_gantry_dict(self,g):
         self.scanner.model_number = g['model_number']
         self.scanner.circularGantry = g['circularGantry']
@@ -123,13 +124,13 @@ class BuildGeometry_v2:
         self.scanner.maxRingDiff = g['maxRingDiff']
         self.scanner.coinciWindowWidthNsec = g['coinciWindowWidthNsec']
         self.scanner.tofResolutionNsec = g['tofResolutionNsec']
-        self.scanner.tofOffsetNsec = g['tofOffsetNsec']        
+        self.scanner.tofOffsetNsec = g['tofOffsetNsec']
         self.sinogram.nRadialBins = g['nRadialBins']
         self.sinogram.nMash = g['nMash']
         self.sinogram.span = g['span']
         self.sinogram.nSegments = g['nSegments']
         self.sinogram.nTofBins = g['nTofBins']
-        
+
 
     def setApirlMmrEngine(self,binPath=None,temPath=None,gpu=True):
         if binPath is None:
@@ -142,10 +143,10 @@ class BuildGeometry_v2:
         self.engine.temPath = temPath
         self.engine.gpu = gpu
         self.is3d = True
-        self.buildMichelogram() 
+        self.buildMichelogram()
         self.sinogram.shape = [self.sinogram.nRadialBins,self.sinogram.nAngularBins,self.sinogram.totalNumberOfSinogramPlanes]
         return
-        
+
 
     def buildMichelogram(self):
         a = np.transpose(np.arange(1,self.scanner.nCrystalRings**2+1).reshape(self.scanner.nCrystalRings,self.scanner.nCrystalRings))
@@ -154,7 +155,7 @@ class BuildGeometry_v2:
         isodd = np.remainder(b[direction,0],2)
         Segments = []
         maxNumberOfPlanesPerSeg = np.zeros([self.sinogram.nSegments, 2],dtype='int16')
-        
+
         for j in range(self.sinogram.nSegments):
             diagonalsPerSegment = []
             for i in range(self.sinogram.span):
@@ -169,7 +170,7 @@ class BuildGeometry_v2:
             OddEvenPlanesPerSegment[0::2] = self.__zero_trim(oddPlanes)
             OddEvenPlanesPerSegment[1::2] = self.__zero_trim(evenPlanes)
             Segments.append(OddEvenPlanesPerSegment)
-  
+
         self.sinogram.numberOfPlanesPerSeg = np.sum(maxNumberOfPlanesPerSeg,axis=1)
         self.sinogram.totalNumberOfSinogramPlanes = np.sum(self.sinogram.numberOfPlanesPerSeg)
         return Segments
@@ -180,11 +181,11 @@ class BuildGeometry_v2:
         grid = np.zeros([self.scanner.nCrystalRings**2,1],dtype='int16')
         nS = self.sinogram.nSegments
         colourPerSeg = np.concatenate([np.arange(0,(nS-1)/2), [(nS-1)/2 +1], np.arange((nS-1)/2 -1,-1,-1)]) + 1
-        
+
         for i in range(nS):
             idx = np.concatenate(Segments[i][:])-1
             grid[idx] = colourPerSeg[i]
-        grid = grid.reshape([self.scanner.nCrystalRings,self.scanner.nCrystalRings])    
+        grid = grid.reshape([self.scanner.nCrystalRings,self.scanner.nCrystalRings])
         ringNumber = np.arange(1,grid.size + 1)
         plt.imshow(grid, aspect='equal')
         if showRingNumber == 1:
@@ -192,7 +193,7 @@ class BuildGeometry_v2:
             for (j, i), _ in np.ndenumerate(grid):
                 label = '{}'.format(ringNumber[k])
                 plt.text(i,j,label,ha='center',va='center',fontsize=12)
-                k+=1 
+                k+=1
         ax = plt.gca();
         ax = plt.gca();
         ax.set_xticks(np.arange(0, self.scanner.nCrystalRings, 1));
@@ -211,7 +212,7 @@ class BuildGeometry_v2:
         Segments = self.buildMichelogram()
         z_axis = self.scanner.zCrystalDimCm* np.arange(-(self.scanner.nCrystalRings -1)/2,(self.scanner.nCrystalRings -1)/2+1)
         axialCoorPerSeg = []
-        
+
         for i in range(self.sinogram.nSegments):
             zy = np.zeros([self.sinogram.numberOfPlanesPerSeg[i],4])
             for j in range(self.sinogram.numberOfPlanesPerSeg[i]):
@@ -222,15 +223,15 @@ class BuildGeometry_v2:
                 zy[j,3] = -self.scanner.effDetectorRadiusCm
             axialCoorPerSeg.append(zy)
         return axialCoorPerSeg,z_axis
-    
+
     def plotLorsAxialCoor(self,plotSeparateSegmentsToo=0):
         import matplotlib.pyplot as plt
         axialCoorPerSeg,z_axis = self.LorsAxialCoor()
-        
+
         plt.figure()
         for j in range(self.sinogram.nSegments):
             for i in range(len(axialCoorPerSeg[j])):
-                plt.plot(axialCoorPerSeg[j][i,0:2],axialCoorPerSeg[j][i,2:4],color='green', linestyle='solid')  
+                plt.plot(axialCoorPerSeg[j][i,0:2],axialCoorPerSeg[j][i,2:4],color='green', linestyle='solid')
         plt.plot(z_axis,self.scanner.effDetectorRadiusCm*np.ones([len(z_axis),]),'bs',fillstyle='none',markeredgewidth=2)
         plt.plot(z_axis,-self.scanner.effDetectorRadiusCm*np.ones([len(z_axis),]),'bs',fillstyle='none',markeredgewidth=2)
         plt.xlabel('Axial Distance (cm)',fontsize=18)
@@ -244,7 +245,7 @@ class BuildGeometry_v2:
             order[1::2] = np.arange(ii+1,self.sinogram.nSegments,dtype='int16')
             idx = order!=0
             order[2::2] = np.arange(ii-1,-1,-1,dtype='int16')
-            q = 0       
+            q = 0
             for j in range(self.sinogram.nSegments):
                 if idx[j]:
                     if q==0:
@@ -268,10 +269,10 @@ class BuildGeometry_v2:
             if self.scanner.model_number ==1104:
                 startXtal = 68
             elif self.scanner.model_number ==2008:
-                startXtal = 40     
-        else:  
+                startXtal = 40
+        else:
             self.sinogram.startXtal = startXtal
-  
+
         p = np.linspace(2*np.pi,0,self.scanner.nCrystalsPerRing+1)
         centerCm = np.zeros([self.scanner.nCrystalsPerRing,2])
         centerCm[:,0]= self.scanner.effDetectorRadiusCm*np.cos(p[1::])
@@ -280,7 +281,7 @@ class BuildGeometry_v2:
         idx = np.arange(self.scanner.nPhysCrystalsPerBlock+1,self.scanner.nCrystalsPerRing+self.scanner.nPhysCrystalsPerBlock+1,
                         self.scanner.nPhysCrystalsPerBlock+1)
         isVirtualCrystal[idx-1]= 1
-        
+
         increment = np.zeros([self.scanner.nCrystalsPerRing,2],dtype='int16')
         increment[0::2,0] = np.arange(1,self.scanner.nCrystalsPerRing/2+1)
         increment[1::2,0] = increment[0::2,0]+1
@@ -290,8 +291,8 @@ class BuildGeometry_v2:
         halfNumberOfRadialBins = self.sinogram.nRadialBins//2+1 # Before interleaving
         R = np.empty((self.scanner.nCrystalsPerRing,3), dtype=object)
         V = np.zeros([halfNumberOfRadialBins,2],dtype='int16')
-        
-        for ii in range(self.scanner.nCrystalsPerRing):  
+
+        for ii in range(self.scanner.nCrystalsPerRing):
             s1 = (startXtal + np.arange(0, halfNumberOfRadialBins,dtype='int16')) - increment[ii,0]
             s2 = (startXtal + np.arange(0, halfNumberOfRadialBins,dtype='int16')) - increment[ii,1]
             s1 = self.__rem_p(s1, self.scanner.nCrystalsPerRing)-1
@@ -304,8 +305,8 @@ class BuildGeometry_v2:
             V[:,1] = isVirtualCrystal[s2]
             R[ii,0] = P1
             R[ii,1] = P2
-            R[ii,2] = V    
-            
+            R[ii,2] = V
+
         if 0: # test rotation
             import matplotlib.pyplot as plt
             plt.figure()
@@ -337,7 +338,7 @@ class BuildGeometry_v2:
         xy1 = np.zeros([self.scanner.nCrystalsPerRing//2,self.sinogram.nRadialBins,2])
         xy2 = np.zeros([self.scanner.nCrystalsPerRing//2,self.sinogram.nRadialBins,2])
         gaps = np.zeros([self.scanner.nCrystalsPerRing//2,self.sinogram.nRadialBins],dtype='int16')#
-        
+
         for i in range(self.scanner.nCrystalsPerRing//2):
             idx = self.scanner.nCrystalsPerRing-(2*i+2)
             P1=R[idx,0]
@@ -359,7 +360,7 @@ class BuildGeometry_v2:
                 gap[i,:] = np.sum(gaps[2*i:2*i+2,:],axis=0)
             gaps = gap
         gaps = np.transpose(gaps)
-        
+
         # Calculate angular sampling
         centalBin = self.sinogram.nRadialBins//2-1
         p1 = xy1[0,centalBin,:]
@@ -369,13 +370,13 @@ class BuildGeometry_v2:
         p2 = xy2[1,centalBin,:]
         lor2 = p2-p1
         CosTheta = np.dot(lor1,lor2)/(np.linalg.norm(lor1)*np.linalg.norm(lor2))
-        self.sinogram.angSamplingDegrees = np.arccos(CosTheta)*180/np.pi                
-        return xy1, xy2, gaps 
+        self.sinogram.angSamplingDegrees = np.arccos(CosTheta)*180/np.pi
+        return xy1, xy2, gaps
 
     def plotLorsTransaxialCoor(self):
         import matplotlib.pyplot as plt
         xy1, xy2, gaps = self.LorsTransaxialCoor()
-        
+
         plt.figure()
         for i in range(self.sinogram.nAngularBins//4):
             plt.clf()
@@ -384,7 +385,7 @@ class BuildGeometry_v2:
                 idx = gaps[:,i]>1
             else:
                 idx = gaps[:,i]>0
-            
+
             plt.plot(np.array([xy1[i,idx,0],xy2[i,idx,0]]), np.array([xy1[i,idx,1],xy2[i,idx,1]]),c='blue',ls='-',lw=0.75)
             plt.axis('square')
             lim = self.scanner.transaxialFovCm*3/4
@@ -394,7 +395,7 @@ class BuildGeometry_v2:
             plt.plot([-lim,lim],[0,0],'--k')
             plt.title('Angle: {}'.format(str(i+1)),fontsize=15)
             plt.show()
-            plt.pause(0.1)  
+            plt.pause(0.1)
 
     def Lors3DEndPointCoor(self,reduce4symmetries = 0):
         axialCoorPerSeg,_= self.LorsAxialCoor()
@@ -427,26 +428,26 @@ class BuildGeometry_v2:
         planeRange[0,0] = 0
         planeRange[1:,0] = cumulativePlaneNumber[0:-1]
         planeRange[:,1] = cumulativePlaneNumber
-        
+
         o = np.zeros([self.sinogram.nSegments,],dtype='int16')
         o[0::2] = np.arange(centralSegment,self.sinogram.nSegments)
         o[1::2] = np.arange(centralSegment-1,-1,-1)
-        
+
         newCumulativePlaneNumber = np.cumsum(self.sinogram.numberOfPlanesPerSeg[o])
         newPlaneRange = np.zeros([len(newCumulativePlaneNumber),2],dtype='int16')
         newPlaneRange[0,0] = 0
         newPlaneRange[1:,0] = newCumulativePlaneNumber[0:-1]
         newPlaneRange[:,1] = newCumulativePlaneNumber
-        
+
         self.sinogram.numberOfPlanesPerSeg = self.sinogram.numberOfPlanesPerSeg[o]
         self.sinogram.originalSegmentOrder = o
-        
+
         if self.scanner.model_number ==2008:
             S = 0*newPlaneRange
             S[0,:] = newPlaneRange[0,:]
             for i in range(centralSegment):
                 S[2*i+1,:] = newPlaneRange[2*i+2,:]
-                S[2*i+2,:] = newPlaneRange[2*i+1,:]                      
+                S[2*i+2,:] = newPlaneRange[2*i+1,:]
             newPlaneRange = S
         self.sinogram.planeRange = newPlaneRange
         xyz1 = 0*xyz01
@@ -464,13 +465,13 @@ class BuildGeometry_v2:
     def plotLors3DEndPointCoor(self,planeNumber=151):
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import axes3d
-        
+
         xyz1, xyz2, _ = self.Lors3DEndPointCoor()
         p = np.linspace(2*np.pi,0,self.scanner.nCrystalsPerRing+1)
         centerCm = np.zeros([self.scanner.nCrystalsPerRing,2])
         centerCm[:,0]= self.scanner.effDetectorRadiusCm*np.cos(p[1::])
         centerCm[:,1]= self.scanner.effDetectorRadiusCm*np.sin(p[1::])
-                
+
         fig = plt.figure()
         ax = fig.add_subplot(111,projection='3d')
         i = 0
@@ -485,24 +486,24 @@ class BuildGeometry_v2:
             ax.plot(np.array([x1[j],x2[j]]),np.array([y1[j],y2[j]]),np.array([z1[j],z2[j]]),c='green',ls='-',lw=0.75)
         ax.plot(centerCm[0::3,0],centerCm[0::3,1],zs = z1[0],c='blue', markersize = 5, marker = 's', ls='None')
         ax.plot(centerCm[0::3,0],centerCm[0::3,1],zs = z2[0],c='blue', markersize = 5, marker = 's', ls='None')
-        plt.show()        
+        plt.show()
 
-    def calculateAxialSymmetries(self):                   
+    def calculateAxialSymmetries(self):
         newPlaneRange = self.sinogram.planeRange
-        newPlaneRange[:,0] +=1                  
-        l = self.sinogram.span//2 + 1   
-        c = self.sinogram.nSegments//2           
+        newPlaneRange[:,0] +=1
+        l = self.sinogram.span//2 + 1
+        c = self.sinogram.nSegments//2
         K = np.zeros([c,l],dtype='int16')
-        K[0:c,0] = newPlaneRange[1::2,0] 
-        K[0:c,1] = K[0:c,0] + 1   
+        K[0:c,0] = newPlaneRange[1::2,0]
+        K[0:c,1] = K[0:c,0] + 1
         for i in range(2,l):
-            K[0:,i] = K[0:,i-1]+2             
+            K[0:,i] = K[0:,i-1]+2
         self.sinogram.uniqueAxialPlanes = np.concatenate([[1],K.flatten()])
 
         ## calculate the translational and mirror symmetries
         b = newPlaneRange.flatten()
         b = np.reshape(b[2::],(4,c),order='F').transpose()
-        n = self.sinogram.span-1 
+        n = self.sinogram.span-1
         I = np.zeros([n,4],dtype='int16')
         x = np.arange(n)
         P = []
@@ -515,19 +516,19 @@ class BuildGeometry_v2:
             I[:,3] = a[3] - x
             P.append(I)
         P = np.concatenate(P[:],axis=0)
-        
+
         symID = np.zeros([P.shape[0],],dtype='int16')
         for i in range(1,len(self.sinogram.uniqueAxialPlanes)):
             j = P[:,0] == self.sinogram.uniqueAxialPlanes[i]
             symID[j] = i+1
         i = np.array(np.nonzero(symID==0),dtype='int16')
         symID[i] = symID[i-1]
-        
+
         Ax = np.zeros([self.sinogram.totalNumberOfSinogramPlanes,],dtype='int16')
         mirror = np.ones([self.sinogram.totalNumberOfSinogramPlanes,],dtype='int16')
         Ax[0:self.sinogram.numberOfPlanesPerSeg[0]] = 1
         idx = n*np.arange(1,c+1)
-        
+
         for i in range(len(symID)):
             if np.any((i+1)==idx):
                 ii = np.concatenate([np.arange(P[i,0],P[i,1]+1),np.arange(P[i,2],P[i,3]+1)])
@@ -551,7 +552,7 @@ class BuildGeometry_v2:
         planeMirrorTranslation[:,2] = offset
         self.sinogram.planeMirrorTranslation = planeMirrorTranslation
 
-              
+
     def calculateSystemMatrixPerPlane(self,xyz1,xyz2,I,reconFovRadious=None):
         if reconFovRadious is None:
             reconFovRadious = self.scanner.transaxialFovCm/2.5
@@ -597,10 +598,10 @@ class BuildGeometry_v2:
             tofBinBoundaries = np.linspace(-self.scanner.coinciWindowWidthNsec/2,self.scanner.coinciWindowWidthNsec/2,self.sinogram.nTofBins+1)
             sigma = self.scanner.tofResolutionNsec/np.sqrt(np.log(256))
             tofMatrix = np.zeros((self.sinogram.nAngularBins//2,self.sinogram.nRadialBins), dtype=object)
-    
+
         for ang in range(self.sinogram.nAngularBins//2):
-            for rad in range(self.sinogram.nRadialBins): 
-    
+            for rad in range(self.sinogram.nRadialBins):
+
                 p1x = xyz1[ang,rad,0,I]
                 p1y = xyz1[ang,rad,1,I]
                 p1z = xyz1[ang,rad,2,I]
@@ -608,30 +609,30 @@ class BuildGeometry_v2:
                 p2y = xyz2[ang,rad,1,I]
                 p2z = xyz2[ang,rad,2,I]
                 tx = p2x - p1x
-                if tx == 0: 
+                if tx == 0:
                     p2x += 1e-2
                     tx = p2x - p1x
                 ax = (bx + np.array([0 , Nx-1])*dx - p1x)/ tx
                 axmin = ax.min()
                 axmax = ax.max()
                 ty = p2y - p1y
-                if ty == 0: 
+                if ty == 0:
                     p2y += 1e-2
                     ty = p2y - p1y
                 ay = (by + np.array([0 , Ny-1])*dy - p1y)/ ty
                 aymin = ay.min()
                 aymax = ay.max()
                 tz = p2z - p1z
-                if tz == 0: 
+                if tz == 0:
                     p1z += 1e-2
                     tz = p2z - p1z
                 az = (bz + np.array([0 , Nz-1])*dz - p1z)/ tz
                 azmin = az.min()
                 azmax = az.max()
-    
+
                 amin = np.array([0,axmin, aymin, azmin]).max()
                 amax = np.array([1,axmax, aymax, azmax]).min()
-                
+
                 if amin < amax:
                     ax = paramInterSectPoint(p1x,p2x, amin,axmin,amax,axmax, tx,bx,dx,Nx)
                     ay = paramInterSectPoint(p1y,p2y, amin,aymin,amax,aymax, ty,by,dy,Ny)
@@ -642,12 +643,12 @@ class BuildGeometry_v2:
                     jm = np.floor(((p1y + ((a[k+1] + a[k])/2)*ty) - by)/dy)
                     km = np.floor(((p1z + ((a[k+1] + a[k])/2)*tz) - bz)/dz)
                     LorIntersectionLength = (a[k+1]-a[k])*np.sqrt(tx**2 + ty**2 + tz**2)*1e4/dx #normaized by pixel size
-                    
+
                     M = np.stack([im, jm, km, LorIntersectionLength]).transpose().astype('int16')
                     #remove weak LOR interactions
                     weaksID = M[:,3]>thresholdOfWeakLors
                     M = M[weaksID,:]
-                    if reconFovRadious!=0:# remove LOR interactions out of reduced reconstruction FOV 
+                    if reconFovRadious!=0:# remove LOR interactions out of reduced reconstruction FOV
                         IdsToKeep = (vCenter_y[M[:,0]]**2 + vCenter_x[M[:,1]]**2)<(reconFovRadious)**2
                         M = M[IdsToKeep,:]
 
@@ -661,16 +662,16 @@ class BuildGeometry_v2:
                             dL = np.sqrt(np.sum((endPoint2 - VoxelCenters)**2 ,axis=1)) - np.sqrt(np.sum((endPoint1 - VoxelCenters)**2 ,axis=1))
                             dT = dL/30 - self.scanner.tofOffsetNsec
                             tofWeights = np.zeros([nEmiPoint,self.sinogram.nTofBins])
-                            
+
                             for q in range(nEmiPoint):
                                 tmp = norm.cdf(tofBinBoundaries,dT[q],sigma)
                                 tofWeights[q,:] = tmp[1:] - tmp[:-1]
                             tofMatrix[ang,rad] = (tofWeights*1e4).astype('int16')
-                        
+
         if not self.scanner.isTof:
             tofMatrix = 0
-        return sMatrix,tofMatrix    
-    
+        return sMatrix,tofMatrix
+
     def buildSystemMatrixUsingSymmetries(self,save_dir=None, reconFovRadious=None, is3d = False,ncores = 1):
         import os
         if save_dir is None:
@@ -693,22 +694,23 @@ class BuildGeometry_v2:
                     np.save(save_dir+'tofMatrix-'+str(i)+'.npy', tofMatrix)
         else:
             print('to do: multiprocessing')
-    
+
     def loadSystemMatrix(self,save_dir,is3d = False, tof=True,reconFovRadious=None):
         import time
         """
-        if case usage of: 
-            PET = BuildGeometry('mct') 
+        if case usage of:
+            PET = BuildGeometry('mct')
             PET.loadSystemMatrix(save_dir)
-            call "self.Lors3DEndPointCoor(1)" internally to set sinogram attributes 
+            call "self.Lors3DEndPointCoor(1)" internally to set sinogram attributes
         """
         self.is3d = is3d
         tic = time.time()
+        save_dir = save_dir + self.engine.bar
         if (not is3d and not os.path.isfile(save_dir+'geoMatrix-0.npy')) or (is3d and not os.path.isfile(save_dir+'geoMatrix-1.npy')):
              self.buildSystemMatrixUsingSymmetries(save_dir,is3d = is3d, reconFovRadious=reconFovRadious)
-                  
+
         self.geoMatrix = []
-        self.image.reconFovRadious = np.load(save_dir+'reconFovRadious.npy')
+        self.image.reconFovRadious = np.load(save_dir + 'reconFovRadious.npy', allow_pickle=True)
         if self.is3d:
              if not hasattr(self.sinogram,'uniqueAxialPlanes'):
                  self.Lors3DEndPointCoor(1);
@@ -716,20 +718,20 @@ class BuildGeometry_v2:
                  self.tofMatrix = []
              N = len(self.sinogram.uniqueAxialPlanes)
              for i in range(N):
-                 self.geoMatrix.append(np.load(save_dir+'geoMatrix-'+str(i)+'.npy'))
+                 self.geoMatrix.append(np.load(save_dir+'geoMatrix-'+str(i)+'.npy', allow_pickle=True))
                  if tof and self.scanner.isTof:
-                     self.tofMatrix.append(np.load(save_dir+'tofMatrix-'+str(i)+'.npy'))
+                     self.tofMatrix.append(np.load(save_dir+'tofMatrix-'+str(i)+'.npy', allow_pickle=True))
         else:
              self.buildMichelogram()
-             self.geoMatrix.append(np.load(save_dir+'geoMatrix-0.npy'))
+             self.geoMatrix.append(np.load(save_dir+'geoMatrix-0.npy', allow_pickle=True))
              if tof and self.scanner.isTof:
                   self.tofMatrix = []
-                  self.tofMatrix.append(np.load(save_dir+'tofMatrix-0.npy'))
-             
+                  self.tofMatrix.append(np.load(save_dir+'tofMatrix-0.npy', allow_pickle=True))
+
         print('loaded in: {} sec.'.format(time.time()-tic))
-    
-        
-    ''' PRIVATE HELPERS '''          
+
+
+    ''' PRIVATE HELPERS '''
     def __zero_pad(self,y):
         maxNumberOfPlanes = [len(y[i]) for i in range(len(y))]
         PlaneNumbers = np.zeros([len(y),np.max(maxNumberOfPlanes)],dtype='int16')
@@ -740,21 +742,21 @@ class BuildGeometry_v2:
             else:
                 PlaneNumbers[i,ii:-ii] = y[i]
         return PlaneNumbers, np.max(maxNumberOfPlanes)
-    
+
     def __zero_trim(self,y):
         out = []
         for i in range(len(y[0])):
             tmp = y[:,i]
             out.append(tmp[np.nonzero(tmp)])
-        return out  
+        return out
 
     def __col2ij(self,m,n):
         if np.max(m) > n**2:
-            raise ValueError("m is greater than the max number of elements") 
+            raise ValueError("m is greater than the max number of elements")
         j = np.ceil(m/n)-1
         i = m-j*n-1
-        return i.astype(int),j.astype(int) 
-    
+        return i.astype(int),j.astype(int)
+
     def __rem_p(self,x,nx):
         for i in range(len(x)):
             while x[i] < nx:
@@ -765,7 +767,7 @@ class BuildGeometry_v2:
 
     def gaussFilter(self,img,fwhm,is3d=False,batch_size=1):
         # 3D aniso/isotropic Gaussian filtering
-        
+
         fwhm = np.array(fwhm)
         if np.all(fwhm==0):
             return img
@@ -783,15 +785,15 @@ class BuildGeometry_v2:
                 fwhm=fwhm*np.ones([2,])
         sigma=fwhm/voxelSizeCm/np.sqrt(2**3*np.log(2))
         imOut = ndimage.filters.gaussian_filter(img,sigma)
-        return imOut.flatten('F')        
-        
+        return imOut.flatten('F')
+
     def buildPhantom(self,model = 0,display = False):
         if model==0: # shepp-logan like phantom
             x = np.arange(-self.image.matrixSize[0]//2, self.image.matrixSize[0]//2, 1)
             y = np.arange(-self.image.matrixSize[1]//2, self.image.matrixSize[1]//2, 1)
             z = np.arange(-self.image.matrixSize[2]//2, self.image.matrixSize[2]//2, 1)
             xx, yy,zz = np.meshgrid(x, y,z)
-            
+
             z1 = (xx**2+(yy/1.3)**2+((zz)/0.8)**2)<80**2
             z2 = 2.5*(((xx+20)**2+(yy+20)**2+(zz/3)**2)<10**2)
             z3 = 3*(((xx/0.45)-60)**2+(yy+20)**2+(zz/3)**2)<60**2
@@ -799,7 +801,7 @@ class BuildGeometry_v2:
             img = z1.astype('float') + z2.astype('float')+ z3.astype('float')+ z4.astype('float')
         else:
             raise ValueError("unknown phantom")
-        
+
         if display:
             import matplotlib.pyplot as plt
             slices = np.sort(np.random.randint(self.image.matrixSize[2],size=4))
@@ -810,31 +812,31 @@ class BuildGeometry_v2:
             plt.subplot(2,2,4),plt.imshow(img[:,:,slices[3]]),plt.title('Slice: {}'.format(str(slices[3])),fontsize=15)
             plt.show()
         return img
-    
+
     def bit_reverse(self,mm):
-        
+
         dec2bin = lambda x,y: [np.binary_repr(x[i], width=y) for i in range(len(x))]
         bin2dec_reverse = lambda x: np.array([int(x[i][::-1],2) for i in range(len(x))])
-        nn = 2**np.ceil(np.log2(mm)).astype(int) 
+        nn = 2**np.ceil(np.log2(mm)).astype(int)
         y = len(np.binary_repr(nn-1))
-        ii = bin2dec_reverse(dec2bin(np.arange(nn),y))  
+        ii = bin2dec_reverse(dec2bin(np.arange(nn),y))
         ii = ii[ii < mm]
         return ii
-    
+
     def check_nsubs(self,nsub):
          nAngles = self.sinogram.nAngularBins
          if (nAngles % nsub) != 0:
               i = np.arange(1,nAngles)
               j = (nAngles % i)== 0
               raise ValueError(f'Choose a valid subset: {i[j]}')
-          
+
     def angular_subsets(self,nsub):
         nAngles = self.sinogram.nAngularBins
         if (nAngles//nsub) % 2 != 0:
             i = np.arange(1,nAngles/2)
             j = (np.mod(nAngles/2/i,1))== 0
             raise ValueError(f'Choose a valid subset: {i[j]}')
-    
+
         subsize = int(nAngles/nsub)
         subsets = np.zeros((subsize, nsub),dtype='int16')
         for j in range(nsub):
@@ -849,19 +851,19 @@ class BuildGeometry_v2:
         st = self.bit_reverse(nsub)
         for i in range(nsub):
             subsets[:,i] = s[:,st[i]]
-    
+
         return subsets, subsize
-    
+
 
     def forwardProject3D(self,img3d,tof=False, psf=0):
         import time
         if tof and not self.scanner.isTof:
-           raise ValueError("The scanner is not TOF") 
+           raise ValueError("The scanner is not TOF")
         nUniqueAxialPlanes = len(self.sinogram.uniqueAxialPlanes)
         allPlanes = []
         for i in range(len(self.sinogram.uniqueAxialPlanes)):
             allPlanes.append(np.nonzero(self.sinogram.planeMirrorTranslation[:,0] == i+1)[0])
-            
+
         img3d = self.gaussFilter(img3d.flatten('F'),psf)
         dims = [self.sinogram.nRadialBins,self.sinogram.nAngularBins,self.sinogram.totalNumberOfSinogramPlanes]
         if tof: dims.append(self.sinogram.nTofBins)
@@ -889,17 +891,17 @@ class BuildGeometry_v2:
 #                            y[j,i+q,allPlanes[p],:] = (G.reshape(-1,1)*img3d[idx2]).T.dot(W)
 #                        else:
                         y[j,i,allPlanes[p]] = G.dot(img3d[idx1])
-                        y[j,i+q,allPlanes[p]] = G.dot(img3d[idx2]) 
-        print('forward-projected in: {} sec.'.format(time.time()-tic))                    
-        return y 
+                        y[j,i+q,allPlanes[p]] = G.dot(img3d[idx2])
+        print('forward-projected in: {} sec.'.format(time.time()-tic))
+        return y
 
     def MLEM3D_python(self, prompts,img=None,RS=None,niter=100, AN=None, tof=False, psf=0):
         import time
         if tof and not self.scanner.isTof:
-               raise ValueError("The scanner is not TOF") 
+               raise ValueError("The scanner is not TOF")
         if img is None:
             img = np.ones(self.image.matrixSize,dtype='float')
-        img = img.flatten('F')  
+        img = img.flatten('F')
         sensImage = np.zeros_like(img)
         if np.ndim(prompts)!=4:
             tof = False
@@ -907,25 +909,25 @@ class BuildGeometry_v2:
             RS = 0*prompts
         if AN is None:
             AN = np.ones([self.sinogram.nRadialBins,self.sinogram.nAngularBins,self.sinogram.totalNumberOfSinogramPlanes],dtype='float')
-    
+
         matrixSize = self.image.matrixSize
         q = self.sinogram.nAngularBins//2
-        Flag = True    
-    
+        Flag = True
+
         nUniqueAxialPlanes = len(self.sinogram.uniqueAxialPlanes)
         allPlanes = []
         for i in range(len(self.sinogram.uniqueAxialPlanes)):
             allPlanes.append(np.nonzero(self.sinogram.planeMirrorTranslation[:,0] == i+1)[0])
         planeMirrorTranslation = self.sinogram.planeMirrorTranslation
         prod = lambda x, y: x.reshape(-1,1).dot(y.reshape(1,-1)).T.astype('int32')
-        
+
         tic = time.time()
-        for n in range(niter):    
+        for n in range(niter):
             if np.any(psf!=0):
                 imgOld = self.gaussFilter(img,psf,True)
             else:
                 imgOld = img
-            backProjImage = 0*img 
+            backProjImage = 0*img
             for i in range(self.sinogram.nAngularBins//2):
                 for j in range(self.sinogram.nRadialBins):
                     for p in range(nUniqueAxialPlanes):
@@ -940,50 +942,50 @@ class BuildGeometry_v2:
                             if tof:
                                 W = self.tofMatrix[p][i,j]/1e4
                                 f1 = AN[j,i,allPlanes[p]].reshape(-1,1)*(prompts[j,i,allPlanes[p],:]/ ((G.reshape(-1,1)*imgOld[idx1]).T.dot(W) + RS[j,i,allPlanes[p],:]+1e-5))
-                                f2 = AN[j,i+q,allPlanes[p]].reshape(-1,1)*(prompts[j,i+q,allPlanes[p],:]/ ((G.reshape(-1,1)*imgOld[idx2]).T.dot(W) + RS[j,i+q,allPlanes[p],:]+1e-5))                           
+                                f2 = AN[j,i+q,allPlanes[p]].reshape(-1,1)*(prompts[j,i+q,allPlanes[p],:]/ ((G.reshape(-1,1)*imgOld[idx2]).T.dot(W) + RS[j,i+q,allPlanes[p],:]+1e-5))
                                 backProjImage[idx1] += G.reshape(-1,1)*W.dot(f1.T)
                                 backProjImage[idx2] += G.reshape(-1,1)*W.dot(f2.T)
                             else:
                                 f1 = AN[j,i,allPlanes[p]]*(prompts[j,i,allPlanes[p]]/(AN[j,i,allPlanes[p]]*G.dot(imgOld[idx1])+RS[j,i,allPlanes[p]]+1e-5))
                                 f2 = AN[j,i+q,allPlanes[p]]*(prompts[j,i+q,allPlanes[p]]/(AN[j,i+q,allPlanes[p]]*G.dot(imgOld[idx2])+RS[j,i+q,allPlanes[p]]+1e-5))
                                 backProjImage[idx1] += G.reshape(-1,1).dot(f1.reshape(1,-1))
-                                backProjImage[idx2] += G.reshape(-1,1).dot(f2.reshape(1,-1)) 
+                                backProjImage[idx2] += G.reshape(-1,1).dot(f2.reshape(1,-1))
                             if Flag:
                                 if tof:
                                     GW = G*np.sum(W,axis = 1)
-                                    sensImage[idx1] += GW.reshape(-1,1).dot(AN[j,i,allPlanes[p]].reshape(1,-1)) 
-                                    sensImage[idx2] += GW.reshape(-1,1).dot(AN[j,i+q,allPlanes[p]].reshape(1,-1)) 
+                                    sensImage[idx1] += GW.reshape(-1,1).dot(AN[j,i,allPlanes[p]].reshape(1,-1))
+                                    sensImage[idx2] += GW.reshape(-1,1).dot(AN[j,i+q,allPlanes[p]].reshape(1,-1))
                                 else:
-                                    sensImage[idx1] += G.reshape(-1,1).dot(AN[j,i,allPlanes[p]].reshape(1,-1)) 
-                                    sensImage[idx2] += G.reshape(-1,1).dot(AN[j,i+q,allPlanes[p]].reshape(1,-1)) 
+                                    sensImage[idx1] += G.reshape(-1,1).dot(AN[j,i,allPlanes[p]].reshape(1,-1))
+                                    sensImage[idx2] += G.reshape(-1,1).dot(AN[j,i+q,allPlanes[p]].reshape(1,-1))
             if np.any(psf!=0) and Flag:
                 sensImage = self.gaussFilter(sensImage,psf,True)
             Flag = False
             img = imgOld*backProjImage/(sensImage+1e-5)
-                          
-        print('forward-projected in: {} sec.'.format((time.time()-tic)/60))                    
-        return img.reshape(matrixSize,order='F') 
-   
+
+        print('forward-projected in: {} sec.'.format((time.time()-tic)/60))
+        return img.reshape(matrixSize,order='F')
+
     def backProjectBatch2D(self, sinodata=None, tof=False, psf=0):
 
         if tof and not self.scanner.isTof:
-               raise ValueError("The scanner is not TOF") 
+               raise ValueError("The scanner is not TOF")
         if sinodata is None:
             batch_size = 1
             if tof:
                 sinodata = np.ones([batch_size, self.sinogram.nRadialBins,self.sinogram.nAngularBins,self.sinogram.nTofBins],dtype='float')
             else:
-                sinodata = np.ones([batch_size, self.sinogram.nRadialBins,self.sinogram.nAngularBins],dtype='float')  
+                sinodata = np.ones([batch_size, self.sinogram.nRadialBins,self.sinogram.nAngularBins],dtype='float')
         else:
             if (tof and np.ndim(sinodata)==4) or (not tof and np.ndim(sinodata)==3):
-                 batch_size = sinodata.shape[0] 
+                 batch_size = sinodata.shape[0]
             else:
                  batch_size = 1
 
         img = np.zeros([batch_size,np.prod(self.image.matrixSize[:2])],dtype='float')
         matrixSize = self.image.matrixSize
         q = self.sinogram.nAngularBins//2
-    
+
         for i in range(self.sinogram.nAngularBins//2):
             for j in range(self.sinogram.nRadialBins):
                 M0 = self.geoMatrix[0][i,j]
@@ -1011,7 +1013,7 @@ class BuildGeometry_v2:
 
     def forwardProjectBatch2D(self,img, tof=False, psf=0):
         if tof and not self.scanner.isTof:
-           raise ValueError("The scanner is not TOF")    
+           raise ValueError("The scanner is not TOF")
         if np.ndim(img)==2:
             batch_size = 1
             img = img[None,:,:]
@@ -1043,25 +1045,25 @@ class BuildGeometry_v2:
                     else:
                         for b in range(batch_size):
                             y[b,j,i] = G.dot(img[b,idx1])
-                            y[b,j,i+q] = G.dot(img[b,idx2]) 
+                            y[b,j,i+q] = G.dot(img[b,idx2])
         if batch_size==1:
             if tof:
                 y = y[0,:,:,:]
             else:
                 y = y[0,:,:]
-        print(f'{batch_size} batches forward-projected\n')                    
+        print(f'{batch_size} batches forward-projected\n')
         return y
 
     def Ramla2D(self, prompts,img=None,RS=None, AN=None, stepSize = None, niter=100, nsubs=1,  tof=False, psf=0):
-    
+
         # 3D sinodata dimensions: (batch_size, nRadialBins, nAngularBins, totalNumberOfSinogramPlanes, nTofBins)
         # 3D images dimnesions: (batch_size,nColums,nRows,nSlices)
         import time
         [numAng,subSize] = self.angular_subsets(nsubs)
         if tof and not self.scanner.isTof:
-               raise ValueError("The scanner is not TOF") 
+               raise ValueError("The scanner is not TOF")
         if (tof and np.ndim(prompts)==4) or (not tof and np.ndim(prompts)==3):
-             batch_size = prompts.shape[0] 
+             batch_size = prompts.shape[0]
         else:
              batch_size = 1
              prompts = prompts[None,:,:]
@@ -1072,7 +1074,7 @@ class BuildGeometry_v2:
             if img.shape[0]!=batch_size:
                 raise ValueError("1st img dimension dosn't match batch_size")
         img = np.reshape(img,[batch_size,np.prod(self.image.matrixSize[:2])],order='F')
-        
+
         if RS is None:
             RS = 0*prompts
         if AN is None:
@@ -1083,7 +1085,7 @@ class BuildGeometry_v2:
         if stepSize is None:
             stepSize = nsubs/((self.backProjectBatch2D(AN, tof, psf))+1e-5)
             stepSize = np.reshape(stepSize,[batch_size,np.prod(self.image.matrixSize[:2])],order='F')
-        
+
         matrixSize = self.image.matrixSize
         q = self.sinogram.nAngularBins//2
 
@@ -1096,7 +1098,7 @@ class BuildGeometry_v2:
                         imgOld[b,:] = self.gaussFilter(img[b,:],psf)
                 else:
                     imgOld = img
-                backProjImage = 0*img 
+                backProjImage = 0*img
                 for ii in range(subSize//2):
                     i = numAng[ii,sub]
                     for j in range(self.sinogram.nRadialBins):
@@ -1119,18 +1121,18 @@ class BuildGeometry_v2:
                     for b in range(batch_size):
                         backProjImage[b,:] = self.gaussFilter(backProjImage[b,:],psf)
                 img = imgOld*(1+stepSize*backProjImage)
-        
+
         img = np.reshape(img,[batch_size,matrixSize[0],matrixSize[1]],order='F')
         if batch_size ==1:
              img = img[0,:,:]
-        print(f'{batch_size} batches reconstructed in: {(time.time()-tic)/60:.3f} min.')                      
+        print(f'{batch_size} batches reconstructed in: {(time.time()-tic)/60:.3f} min.')
         return img
 
     def OSMAPEM2D_DePierro(self, prompts,img=None,RS=None,niter=100, nsubs=1, AN=None, tof=False, psf=0, beta=1, prior = None, prior_weights = 1):
         import time
         [numAng,subSize] = self.angular_subsets(nsubs)
         if tof and not self.scanner.isTof:
-               raise ValueError("The scanner is not TOF") 
+               raise ValueError("The scanner is not TOF")
         if img is None:
             img = np.ones(self.image.matrixSize[:2],dtype='float')
         img = img.flatten('F')
@@ -1146,15 +1148,15 @@ class BuildGeometry_v2:
         if prior is None:
             from geometry.Prior import Prior
             prior = Prior(matrixSize[:2])
-        
-        W = prior.Wd*prior_weights   
+
+        W = prior.Wd*prior_weights
         wj = prior.imCropUndo(W.sum(axis=1))
-        
+
         display = 0
         if display:
             import matplotlib.pyplot as plt
-            plt.figure(), 
-        
+            plt.figure(),
+
         q = self.sinogram.nAngularBins//2
         Flag = True
         tic = time.time()
@@ -1164,7 +1166,7 @@ class BuildGeometry_v2:
                     imgOld = self.gaussFilter(img,psf)
                 else:
                     imgOld = img
-                backProjImage = 0*img 
+                backProjImage = 0*img
                 sensImage = 0*sensImage
                 for ii in range(subSize//2):
                     i = numAng[ii,sub]
@@ -1181,7 +1183,7 @@ class BuildGeometry_v2:
                                 backProjImage[idx2] += G*AN[j,i+q]*W.dot(prompts[j,i+q,:]/(AN[j,i+q]*(G*img[idx2]).dot(W)+RS[j,i+q,:]+1e-5))
                             else:
                                 backProjImage[idx1] += G*AN[j,i]*(prompts[j,i]/(AN[j,i]*G.dot(imgOld[idx1])+RS[j,i]+1e-5))
-                                backProjImage[idx2] += G*AN[j,i+q]*(prompts[j,i+q]/(AN[j,i+q]*G.dot(imgOld[idx2])+RS[j,i+q]+1e-5)) 
+                                backProjImage[idx2] += G*AN[j,i+q]*(prompts[j,i+q]/(AN[j,i+q]*G.dot(imgOld[idx2])+RS[j,i+q]+1e-5))
                             if Flag:
                                 if tof:
                                     GW = G*np.sum(W,axis = 1)
@@ -1191,7 +1193,7 @@ class BuildGeometry_v2:
                                     sensImage[idx1] += G*AN[j,i]
                                     sensImage[idx2] += G*AN[j,i+q]
                 if Flag:
-                    if np.any(psf!=0): 
+                    if np.any(psf!=0):
                         sensImageSubs[:,sub] = self.gaussFilter(sensImage,psf)+1e-5
                     else:
                         sensImageSubs[:,sub] = sensImage+1e-5
@@ -1199,27 +1201,27 @@ class BuildGeometry_v2:
                     backProjImage = self.gaussFilter(backProjImage,psf)
                 img_sens = sensImageSubs[:,sub]
                 betaj = beta * wj /img_sens
-                img_em = imgOld*backProjImage/img_sens   
+                img_em = imgOld*backProjImage/img_sens
                 img = img_em
                 img_reg = 1/(2*wj) * prior.imCropUndo((W*prior.Div(imgOld)).sum(axis=1))
-            
+
                 #img_reg = imgOld - 1/(2*wj)*prior.GradT(W*prior.Grad(imgOld.reshape(matrixSize[:2],order='F'))).flatten('F')
                 img = 2*img_em/(np.sqrt((1-betaj*img_reg)**2+4*betaj*img_em)+(1-betaj*img_reg)+1e-5)
-                
-                
+
+
             if display:
                 plt.imshow(img.reshape(matrixSize[:2],order='F'),vmin=0,vmax=3.5),plt.title('img',fontsize=15)
                 plt.pause(0.15)
             Flag = False
             sensImage = 0
-        img = np.reshape(img,matrixSize[:2],order='F')                
-        #img_reg = np.reshape(img_reg,matrixSize[:2],order='F')                
-        print('reconstructed in: {} min.'.format((time.time()-tic)/60))                    
+        img = np.reshape(img,matrixSize[:2],order='F')
+        #img_reg = np.reshape(img_reg,matrixSize[:2],order='F')
+        print('reconstructed in: {} min.'.format((time.time()-tic)/60))
         return img
-    
-        
+
+
     def iSensImageBatch2D(self, AN=None, nsubs = 1, psf=0):
-        
+
         if AN is None:
             batch_size = 1
             AN = np.ones([batch_size, self.sinogram.nRadialBins,self.sinogram.nAngularBins],dtype='float')
@@ -1227,13 +1229,13 @@ class BuildGeometry_v2:
              if np.ndim(AN)==2:
                   AN = AN[None,:,:]
              batch_size = AN.shape[0]
-             
+
         sensImageSubBatch = np.zeros([batch_size,nsubs,self.image.matrixSize[0]*self.image.matrixSize[1]],dtype='float')
         sensImage = np.zeros([batch_size,np.prod(self.image.matrixSize[:2])],dtype='float')
         matrixSize = self.image.matrixSize
         q = self.sinogram.nAngularBins//2
         [numAng,subSize] = self.angular_subsets(nsubs)
-        
+
         for sub in range(nsubs):
             sensImage = 0*sensImage
             for ii in range(subSize//2):
@@ -1257,25 +1259,25 @@ class BuildGeometry_v2:
                                 sensImage[b,idx1] += G*AN[b,j,i]
                                 sensImage[b,idx2] += G*AN[b,j,i+q]
             for b in range(batch_size):
-                sensImageSubBatch[b,sub,:] = self.gaussFilter(sensImage[b,:],psf)*self.mask_fov()  
+                sensImageSubBatch[b,sub,:] = self.gaussFilter(sensImage[b,:],psf)*self.mask_fov()
         iSensImageSubBatch = 1/(sensImageSubBatch)
         iSensImageSubBatch[np.isinf(iSensImageSubBatch)]=0
         if batch_size==1:
              iSensImageSubBatch = iSensImageSubBatch[0,:,:]
         return iSensImageSubBatch
-    
+
     def OSEM2D(self, prompts,img=None,RS=None, AN=None, iSensImg = None, niter=100, nsubs=1,  tof=False, psf=0):
-    
+
         # sinodata dimensions: (batch_size, nRadialBins, nAngularBins, totalNumberOfSinogramPlanes, nTofBins)
         # images dimensions: (batch_size,nColums,nRows,nSlices)
         import time
         tic = time.time()
         [numAng,subSize] = self.angular_subsets(nsubs)
         if tof and not self.scanner.isTof:
-               raise ValueError("The scanner is not TOF") 
+               raise ValueError("The scanner is not TOF")
         if not tof and np.ndim(prompts)==2:
              batch_size = 1
-             prompts = prompts[None,:,:]                 
+             prompts = prompts[None,:,:]
         elif tof and np.ndim(prompts)==3:
               batch_size = 1
               prompts = prompts[None,:,:,:]
@@ -1289,7 +1291,7 @@ class BuildGeometry_v2:
                 raise ValueError("1st img dimension dosn't match batch_size")
         nVoxls = np.prod(self.image.matrixSize[:2])
         img = np.reshape(img,[batch_size,nVoxls],order='F')
-        
+
         if RS is None:
             RS = 0*prompts
         if AN is None:
@@ -1301,18 +1303,18 @@ class BuildGeometry_v2:
             iSensImg = self.iSensImageBatch2D(AN, nsubs, psf)
             if np.ndim(iSensImg)==2:
                  iSensImg = iSensImg[None,:,:]
-                 
+
 
         matrixSize = self.image.matrixSize
         q = self.sinogram.nAngularBins//2
 
-        
+
         for n in range(niter):
             for sub in range(nsubs):
                 if np.any(psf!=0):
                     for b in range(batch_size):
                         img[b,:] = self.gaussFilter(img[b,:],psf)
-                backProjImage = 0*img 
+                backProjImage = 0*img
                 for ii in range(subSize//2):
                     i = numAng[ii,sub]
                     for j in range(self.sinogram.nRadialBins//6,5*self.sinogram.nRadialBins//6):
@@ -1335,15 +1337,15 @@ class BuildGeometry_v2:
                     for b in range(batch_size):
                         backProjImage[b,:] = self.gaussFilter(backProjImage[b,:],psf)
                 img = img*backProjImage*iSensImg[:,sub,:]
-        
+
         img = np.reshape(img,[batch_size,matrixSize[0],matrixSize[1]],order='F')
         if batch_size == 1:
              img = img[0,:,:]
-        print(f'{batch_size} batches reconstructed in: {(time.time()-tic):.3f} sec.')                      
+        print(f'{batch_size} batches reconstructed in: {(time.time()-tic):.3f} sec.')
         return img
-   
+
     def forwardBackwardBatch2D(self, img, prompts, RS=None, AN=None, nsubs=1, subset_i=0, tof=False, psf=0):
-    
+
         # 3D sinodata dimensions: (batch_size, nRadialBins, nAngularBins, totalNumberOfSinogramPlanes, nTofBins)
         # 3D images dimnesions: (batch_size,nColums,nRows,nSlices)
         #import time
@@ -1351,14 +1353,14 @@ class BuildGeometry_v2:
         if nsubs>1 and subset_i>(nsubs-1):
             raise ValueError(f"subset_i must be in [0, {nsubs}]")
         if tof and not self.scanner.isTof:
-               raise ValueError("The scanner is not TOF") 
-        
+               raise ValueError("The scanner is not TOF")
+
         batch_size = prompts.shape[0]
         if img.shape[0]!=batch_size:
             raise ValueError("1st img dimension dosn't match batch_size")
         nVoxls = np.prod(self.image.matrixSize[:2])
         img = np.reshape(img,[batch_size,nVoxls],order='F')
-        
+
         if np.ndim(prompts)!=4:
             tof = False
         if RS is None:
@@ -1371,7 +1373,7 @@ class BuildGeometry_v2:
         if np.any(psf!=0):
             for b in range(batch_size):
                 img[b,:] = self.gaussFilter(img[b,:],psf)
-        backProjImage = 0*img 
+        backProjImage = 0*img
         for ii in range(subSize//2):
             i = numAng[ii,subset_i]
             for j in range(self.sinogram.nRadialBins):
@@ -1393,8 +1395,8 @@ class BuildGeometry_v2:
         if np.any(psf!=0):
             for b in range(batch_size):
                 backProjImage[b,:] = self.gaussFilter(backProjImage[b,:],psf)*self.mask_fov()
-                 
-        #print(f'{batch_size} batches forwad-backprojected in: {(time.time()-tic)/60:.3f} min.')                      
+
+        #print(f'{batch_size} batches forwad-backprojected in: {(time.time()-tic)/60:.3f} min.')
         return backProjImage
 
     def mask_fov(self):
@@ -1402,37 +1404,37 @@ class BuildGeometry_v2:
             reconFovRadious = self.image.reconFovRadious*0.96
             x = self.image.voxelSizeCm[0]* np.arange(-self.image.matrixSize[0]//2, self.image.matrixSize[0]//2, 1)
             y = self.image.voxelSizeCm[1]*np.arange(-self.image.matrixSize[1]//2, self.image.matrixSize[1]//2, 1)
-            xx, yy = np.meshgrid(x, y)     
+            xx, yy = np.meshgrid(x, y)
             mask = ((xx**2 + yy**2)<reconFovRadious**2).flatten('F')
             self.fov_mask = mask
         else:
             mask = self.fov_mask
         return mask
-    
+
     def OSEM3D_python(self, prompts,img=None,RS=None,niter=100, nsubs=1, AN=None, psf=0):
         import time
         [numAng,subSize] = self.angular_subsets(nsubs)
         if img is None:
             img = np.ones(self.image.matrixSize,dtype='float')
-        img = img.flatten('F')  
+        img = img.flatten('F')
         sensImage = np.zeros_like(img)
         sensImageSubs = np.zeros((np.prod(self.image.matrixSize),nsubs),dtype='float')
         if RS is None:
             RS = 0*prompts
         if AN is None:
             AN = np.ones([self.sinogram.nRadialBins,self.sinogram.nAngularBins,self.sinogram.totalNumberOfSinogramPlanes],dtype='float')
-         
+
         matrixSize = self.image.matrixSize
         q = self.sinogram.nAngularBins//2
-        Flag = True    
-        
+        Flag = True
+
         nUniqueAxialPlanes = len(self.sinogram.uniqueAxialPlanes)
         allPlanes = []
         for i in range(len(self.sinogram.uniqueAxialPlanes)):
             allPlanes.append(np.nonzero(self.sinogram.planeMirrorTranslation[:,0] == i+1)[0])
         planeMirrorTranslation = self.sinogram.planeMirrorTranslation
         prod = lambda x, y: x.reshape(-1,1).dot(y.reshape(1,-1)).T.astype('int32')
-        
+
         tic = time.time()
         for n in range(niter):
              for sub in range(nsubs):
@@ -1450,37 +1452,37 @@ class BuildGeometry_v2:
                                  idxAxial = matrixSize[0]*matrixSize[1]*(prod(H[:,1],M[:,2]) + H[:,2])
                                  idx1 = (M[:,0] + M[:,1]*matrixSize[0]).reshape(-1,1) + idxAxial
                                  idx2 = (M[:,1] + matrixSize[0]*(matrixSize[0]-1-M[:,0])).reshape(-1,1) + idxAxial
-                                 
+
                                  an = AN[j,i,allPlanes[p]]
-                                 f = an*(prompts[j,i,allPlanes[p]]/(an*G.dot(imgOld[idx1])+RS[j,i,allPlanes[p]]+1e-5))                                 
+                                 f = an*(prompts[j,i,allPlanes[p]]/(an*G.dot(imgOld[idx1])+RS[j,i,allPlanes[p]]+1e-5))
                                  backProjImage[idx1] += G.reshape(-1,1).dot(f.reshape(1,-1))
                                  an = AN[j,i+q,allPlanes[p]]
                                  f = an*(prompts[j,i+q,allPlanes[p]]/(an*G.dot(imgOld[idx2])+RS[j,i+q,allPlanes[p]]+1e-5))
-                                 backProjImage[idx2] += G.reshape(-1,1).dot(f.reshape(1,-1)) 
+                                 backProjImage[idx2] += G.reshape(-1,1).dot(f.reshape(1,-1))
                                  if Flag:
-                                      sensImage[idx1] += G.reshape(-1,1).dot(AN[j,i,allPlanes[p]].reshape(1,-1)) 
+                                      sensImage[idx1] += G.reshape(-1,1).dot(AN[j,i,allPlanes[p]].reshape(1,-1))
                                       sensImage[idx2] += G.reshape(-1,1).dot(AN[j,i+q,allPlanes[p]].reshape(1,-1))
                  if Flag:
                       sensImageSubs[:,sub] = sensImage+1e-5
                  backProjImage = self.gaussFilter(backProjImage,psf)
                  img = imgOld*backProjImage/(sensImageSubs[:,sub])
              Flag = False
-             sensImage = 0                     
-        print('forward-projected in: {} min.'.format((time.time()-tic)/60))                    
+             sensImage = 0
+        print('forward-projected in: {} min.'.format((time.time()-tic)/60))
         return img.reshape(matrixSize,order='F')
 
 
 
     """
     ******************************************************************************************************************
-    
+
                                                  Functions for 3D reconstruction using April
-    
+
     ******************************************************************************************************************
-     
-    """   
+
+    """
     def createConfigFile(self,flname,input_file, output_data_flname, output_filename, gpu = True, project_mode = True, nsubs = 1, subsetIndex = 0):
-          
+
           f = open(flname,"w+")
           if project_mode:
                f.write("Projection Parameters :=\n" \
@@ -1502,17 +1504,17 @@ class BuildGeometry_v2:
                else:
                     f.write("backprojector := Siddon\n")
                f.write(f"output image := {output_data_flname}\n")
-     
+
           f.write("siddon number of samples on the detector := 1\n" \
                   "siddon number of axial samples on the detector := 1\n")
           if nsubs>1:
                f.write(f"number of subsets := {nsubs}\n")
                f.write(f"subset index := {subsetIndex}\n")
-          
+
           f.write(f"input file := {input_file}\n")
           f.write(f"output filename := {output_filename}\n")
-          f.close()     
-          return 
+          f.close()
+          return
 
     def write_to_apirl(self,flname, data=None, sino_mode=False):
           if data is None:
@@ -1520,16 +1522,16 @@ class BuildGeometry_v2:
                itemsize = 4
           else:
                if data.dtype.name == 'int32':
-                   dataType = 'signed integer' 
+                   dataType = 'signed integer'
                elif data.dtype.name == 'int16':
-                    dataType = 'signed integer'              
+                    dataType = 'signed integer'
                elif data.dtype.name == 'float64':
                     dataType = 'long float'
                elif data.dtype.name == 'float32':
-                    dataType = 'short float'               
+                    dataType = 'short float'
                itemsize = data.itemsize
-   
-          f = open(flname+".h33","w+") 
+
+          f = open(flname+".h33","w+")
           f.write("!INTERFILE :=\n")
           f.write(f"!name of data file := {flname}.i33\n")
           if sino_mode:
@@ -1562,12 +1564,12 @@ class BuildGeometry_v2:
                "scaling factor (mm/pixel) [2] := 2.086260\n" \
                "scaling factor (mm/pixel) [3] := 2.031250\n" \
                "!END OF INTERFILE :=\n")
-          f.close()   
-          f = open(flname+".i33","wb")       
+          f.close()
+          f = open(flname+".i33","wb")
           if data is not None:
                 f.write(data.tobytes(order='F'))
           f.close()
-     
+
 
     def gaussFilterBatch(self,img,fwhm):
          voxelSizeCm = self.image.voxelSizeCm
@@ -1575,7 +1577,7 @@ class BuildGeometry_v2:
          fwhm = np.array(fwhm)
          if np.all(fwhm==0):
              return img
-     
+
          if fwhm.shape==1:
              if is3d:
                  fwhm=fwhm*np.ones([3,])
@@ -1584,24 +1586,24 @@ class BuildGeometry_v2:
          if not is3d:
              voxelSizeCm = voxelSizeCm[0:2]
          sigma=fwhm/voxelSizeCm/np.sqrt(2**3*np.log(2))
-             
+
          Filter = lambda x,sigma: ndimage.filters.gaussian_filter(x,sigma)
          if is3d:
               if np.ndim(img)==3:
-                 imOut = Filter(img,sigma)  
+                 imOut = Filter(img,sigma)
               else:
                    imOut = 0*img
                    for b in range(img.shape[0]):
                         imOut[b,:,:,:] = Filter(img[b,:,:,:],sigma)
          else:
               if np.ndim(img)==2:
-                 imOut = Filter(img,sigma)  
+                 imOut = Filter(img,sigma)
               else:
                    imOut = 0*img
                    for b in range(img.shape[0]):
-                        imOut[b,:,:] = Filter(img[b,:,:],sigma)     
-         return imOut   
-    
+                        imOut[b,:,:] = Filter(img[b,:,:],sigma)
+         return imOut
+
     def simulateSinogramData(self,img, mumap = None, counts= 1e7, psf = 0, tof = False, randomsFraction = 0):
         #2D/3D images dimensions: (batch_size,nColums,nRows,[nSlices])
         if self.is3d:
@@ -1616,26 +1618,26 @@ class BuildGeometry_v2:
              else:
                   batch_size = img.shape[0]
              projector = lambda x: self.forwardProjectBatch2D(x, psf=psf)
-     
+
         if mumap is None:
              AF = 1
         else:
              AF = np.exp(-projector(mumap*self.image.voxelSizeCm[0]))
-             AF[np.isinf(AF)] = 0  
-             
+             AF[np.isinf(AF)] = 0
+
         if np.isscalar(counts):
-             counts = counts*np.ones(batch_size,)                   
+             counts = counts*np.ones(batch_size,)
         truesFraction = 1 - randomsFraction
-        
+
         y = projector(img)
         y_att = y*AF
         y_poisson = np.zeros_like(y)
-        
+
         if batch_size>1:
             for b in range(batch_size):
                 if self.is3d:
                      scale_factor = counts[b]*truesFraction/y_att[b,:,:,:].sum()
-                     y_poisson[b,:,:,:] = np.random.poisson(y_att[b,:,:,:]*scale_factor)/scale_factor                
+                     y_poisson[b,:,:,:] = np.random.poisson(y_att[b,:,:,:]*scale_factor)/scale_factor
                 else:
                      scale_factor = counts[b]*truesFraction/y_att[b,:,:].sum()
                      y_poisson[b,:,:] = np.random.poisson(y_att[b,:,:]*scale_factor)/scale_factor
@@ -1649,7 +1651,7 @@ class BuildGeometry_v2:
                 for b in range(batch_size):
                     if self.is3d:
                          scale_factor_randoms = counts[b]*randomsFraction/r_poisson[b,:,:,:].sum()
-                         r_poisson[b,:,:,:] = np.random.poisson(r_poisson[b,:,:,:]*scale_factor_randoms)/scale_factor_randoms                    
+                         r_poisson[b,:,:,:] = np.random.poisson(r_poisson[b,:,:,:]*scale_factor_randoms)/scale_factor_randoms
                     else:
                          scale_factor_randoms = counts[b]*randomsFraction/r_poisson[b,:,:].sum()
                          r_poisson[b,:,:] = np.random.poisson(r_poisson[b,:,:]*scale_factor_randoms)/scale_factor_randoms
@@ -1657,40 +1659,40 @@ class BuildGeometry_v2:
                 scale_factor_randoms = counts*randomsFraction/r_poisson.sum()
                 r_poisson = np.random.poisson(r_poisson*scale_factor_randoms)/scale_factor_randoms
         else:
-            Randoms = 0   
+            Randoms = 0
         prompts = y_poisson + Randoms
-        return prompts, AF, Randoms     
+        return prompts, AF, Randoms
 
     def forwardProjectBatch3D(self,img, nsubs = 1, subsetIndex=0, psf = 0, remove_tmps = True):
           if nsubs>1:
                self.check_nsubs(nsubs)
-          
-          img = img.astype('float32')      
+
+          img = img.astype('float32')
           if np.ndim(img)==3:
                batch_size = 1
                img = img[None,:,:,:]
           else:
                batch_size = img.shape[0]
-               
-          sino_shape = self.sinogram.shape         
+
+          sino_shape = self.sinogram.shape
           sinoOut = np.zeros((batch_size, sino_shape[0], sino_shape[1], sino_shape[2]),dtype = 'float32')
           out_sino_flname = self.engine.temPath + self.engine.bar + 'out_sino'
           sample_sino_flname = self.engine.temPath + self.engine.bar + 'sample_sino'
           input_img_flname = self.engine.temPath + self.engine.bar + 'input_img'
-          config_flname = self.engine.temPath + self.engine.bar + 'fwdproj.par'    
-          
+          config_flname = self.engine.temPath + self.engine.bar + 'fwdproj.par'
+
           if not os.path.isfile(sample_sino_flname):
                self.write_to_apirl(sample_sino_flname, sino_mode=True)
           self.createConfigFile(config_flname,input_img_flname+'.h33', sample_sino_flname+'.h33', out_sino_flname, self.engine.gpu, True, nsubs, subsetIndex)
-          
+
           for b in range(batch_size):
                if np.any(psf!=0):
                     img_b = self.gaussFilterBatch(img[b,:,:,:],psf)
                else:
                     img_b = img[b,:,:,:]
-               self.write_to_apirl(input_img_flname,img_b)   
+               self.write_to_apirl(input_img_flname,img_b)
                subprocess.run([self.engine.binPath +self.engine.bar+'project', config_flname])
-     
+
                tmp = np.fromfile(out_sino_flname+'.i33',dtype='float32')
                if nsubs ==1:
                     sino = tmp.reshape(sino_shape, order='F')
@@ -1712,14 +1714,14 @@ class BuildGeometry_v2:
           return sinoOut
 
     def backProjectBatch3D(self,sino, nsubs = 1, subsetIndex=0, psf = 0, remove_tmps = True):
-     
-          sino = sino.astype('float32')      
+
+          sino = sino.astype('float32')
           if np.ndim(sino)==3:
                batch_size = 1
                sino = sino[None,:,:,:]
           else:
                batch_size = sino.shape[0]
-  
+
           matrix_size = self.image.matrixSize
           imgOut = np.zeros((batch_size, matrix_size[0], matrix_size[1], matrix_size[2]),dtype = 'float32')
           out_img_flname = self.engine.temPath + self.engine.bar + 'out_img'
@@ -1728,14 +1730,14 @@ class BuildGeometry_v2:
           config_flname = self.engine.temPath + self.engine.bar + 'backproj.par'
           self.createConfigFile(config_flname,input_sino_flname+'.h33', sample_img_flname+'.h33', out_img_flname,
                            self.engine.gpu, False, nsubs, subsetIndex)
-          
+
           if not os.path.isfile(sample_img_flname):
-               self.write_to_apirl(sample_img_flname,np.zeros(matrix_size,dtype='float32')) 
-          
+               self.write_to_apirl(sample_img_flname,np.zeros(matrix_size,dtype='float32'))
+
           for b in range(batch_size):
-               self.write_to_apirl(input_sino_flname, sino[b,:,:,:], True) 
+               self.write_to_apirl(input_sino_flname, sino[b,:,:,:], True)
                subprocess.run([self.engine.binPath +self.engine.bar+'backproject', config_flname]);
-          
+
                img = np.fromfile(out_img_flname+'.i33',dtype='float32').reshape(matrix_size, order='F')
                img[np.isnan(img)]=0
                if np.any(psf!=0):
@@ -1748,7 +1750,7 @@ class BuildGeometry_v2:
                     os.remove(input_sino_flname+'.i33')
           if batch_size==1:
                imgOut = imgOut[0,:,:,:]
-          return imgOut    
+          return imgOut
 
     def iSensImageBatch3D(self, AN = None, nsubs = 1, psf = 0):
           if AN is None:
@@ -1759,14 +1761,14 @@ class BuildGeometry_v2:
           else:
                batch_size = AN.shape[0]
           sensImgOut = np.zeros((batch_size,nsubs, self.image.matrixSize[0], self.image.matrixSize[1], self.image.matrixSize[2]),dtype='float32')
-     
-          for i in range(nsubs):
+
+          for i in trange(nsubs, unit="sub"):
                sensImgOut[:,i,:,:,:] = self.backProjectBatch3D(AN,nsubs = nsubs, subsetIndex=i, psf=psf)
-     
+
           if batch_size==1:
                sensImgOut = sensImgOut[0,:,:,:,:]
-          sensImgOut = 1/sensImgOut
-          sensImgOut[np.isinf(sensImgOut)]=0
+          mask = sensImgOut != 0
+          sensImgOut[mask] = 1/sensImgOut[mask]
           return sensImgOut
 
     def forwardDivideBackwardBatch3D(self,img, prompts, RS, AN, nsubs, subsetIndex, psf):
@@ -1786,10 +1788,10 @@ class BuildGeometry_v2:
                     sino_shape = [batch_size,self.sinogram.shape[0],self.sinogram.shape[1],self.sinogram.shape[2]]
                else:
                     sino_shape = self.sinogram.shape
-               AN = np.ones(sino_shape,dtype='float32') 
+               AN = np.ones(sino_shape,dtype='float32')
           if iSensImg is None:
                print(f'Calculate sensitivity image for {batch_size} sinograms and {nsubs} subsets\n')
-               iSensImg = self.iSensImageBatch3D(AN,nsubs,psf) 
+               iSensImg = self.iSensImageBatch3D(AN,nsubs,psf)
           if img is None:
                if batch_size>1:
                     matrix_size = [batch_size, self.image.matrixSize[0],self.image.matrixSize[1],self.image.matrixSize[2]]
@@ -1798,9 +1800,8 @@ class BuildGeometry_v2:
                img = np.ones(matrix_size,dtype='float32')
           print(f'OSEM recon of {batch_size} sinograms. {niter} iters, {nsubs} nsubs \n')
           tic = time.time()
-          for n in range(niter):
-               for m in range(nsubs):
-                   print(f"iter: {n}, sub: {m}\n")
+          for n in trange(niter):
+               for m in trange(nsubs, unit="sub"):
                    if batch_size ==1:
                         iSenImg_m = iSensImg[m,:,:,:]
                    else:
@@ -1814,7 +1815,7 @@ class BuildGeometry_v2:
          out = self.backProjectBatch3D(AN*((prompts/y)-1.0),nsubs = nsubs, subsetIndex=subsetIndex, psf=psf)
          out[np.isinf(out)]=0
          return out
-    
+
     def Ramla3D(self,prompts, AN = None, RS = 0, stepSize = None, img = None, niter = 1, nsubs = 1, psf=0):
           import time
           if np.ndim(prompts)==3:
@@ -1826,10 +1827,10 @@ class BuildGeometry_v2:
                     sino_shape = [batch_size,self.sinogram.shape[0],self.sinogram.shape[1],self.sinogram.shape[2]]
                else:
                     sino_shape = self.sinogram.shape
-               AN = np.ones(sino_shape,dtype='float32') 
+               AN = np.ones(sino_shape,dtype='float32')
           if stepSize is None:
                print(f'Calculate step size for {batch_size} sinograms\n')
-               stepSize = nsubs*self.iSensImageBatch3D(AN,1,psf)[0,:,:,:] 
+               stepSize = nsubs*self.iSensImageBatch3D(AN,1,psf)[0,:,:,:]
           if img is None:
                if batch_size>1:
                     matrix_size = [batch_size, self.image.matrixSize[0],self.image.matrixSize[1],self.image.matrixSize[2]]
@@ -1843,9 +1844,5 @@ class BuildGeometry_v2:
                    print(f"iter: {n}, sub: {m}\n")
                    img = img * (1.0 + stepSize * self.forwardDivideSubtractBackwardBatch3D(img, prompts, RS, AN, nsubs, m, psf))
           print(f'Done in {(time.time()-tic)/60:.3f} min.')
-          
+
           return img
-
-
-
-

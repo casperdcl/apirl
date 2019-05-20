@@ -6,8 +6,13 @@ Created on Fri May 17 16:34:30 2019
 """
 import numpy as np
 import os
-def PETbrainWebPhantom(phanPath, phantom_number=0,voxel_size=None,image_size=None, num_lesions = 10, \
-                       lesion_size_mm = [2,10], pet_lesion = False,t1_lesion = False, t2_lesion = False,hot_cold_ratio = 0.5):
+from tqdm.auto import trange
+
+
+def PETbrainWebPhantom(
+      phanPath, phantom_number=0,voxel_size=None,image_size=None, num_lesions=10,
+      lesion_size_mm=[2, 10], pet_lesion=False, t1_lesion=False, t2_lesion=False,
+      hot_cold_ratio=0.5):
 
     if type(phantom_number)==list:
          pet = np.zeros([len(phantom_number),]+image_size)
@@ -18,7 +23,7 @@ def PETbrainWebPhantom(phanPath, phantom_number=0,voxel_size=None,image_size=Non
              pet[i,:,:,:], mumap[i,:,:,:], t1[i,:,:,:], t2[i,:,:,:] = PETbrainWebPhantom(phanPath, phantom_number[i], \
                 voxel_size,image_size, num_lesions, lesion_size_mm, pet_lesion, t1_lesion, t2_lesion,hot_cold_ratio)
          return pet, mumap, t1, t2
-    
+
     if voxel_size is None:
         voxel_size = [2.08625, 2.08625, 2.03125]
     if image_size is None:
@@ -33,7 +38,7 @@ def PETbrainWebPhantom(phanPath, phantom_number=0,voxel_size=None,image_size=Non
           phantom = np.fromfile(filename, dtype='uint16')
     phantom = phantom.reshape([362, 434, 362]).transpose(1,2,0)
     phantom =phantom[::-1, :, :]
-    
+
     # PHANTOM PARAMETER
     indicesCsf = phantom == 16
     indicesWhiteMatter = phantom == 48
@@ -55,7 +60,7 @@ def PETbrainWebPhantom(phanPath, phantom_number=0,voxel_size=None,image_size=Non
     mu_tissue_1_cm = 0.0975;
     mumap[phantom >0] = mu_tissue_1_cm
     mumap[indicesBone] = mu_bone_1_cm
-     
+
     #TRANSFORM THE ATANOMY INTO PET SIGNALS
     whiteMatterAct = 32
     grayMatterAct = 96
@@ -63,10 +68,10 @@ def PETbrainWebPhantom(phanPath, phantom_number=0,voxel_size=None,image_size=Non
     pet = phantom;
     pet[indicesWhiteMatter] = whiteMatterAct
     pet[indicesGrayMatter] = grayMatterAct
-    pet[indicesSkin] = skinAct 
+    pet[indicesSkin] = skinAct
     pet[~indicesWhiteMatter &  ~indicesGrayMatter & ~indicesSkin] = skinAct/2
     pet[indicesAir] = 0
-    
+
     # T1
     t1 = 0*phantom;
     whiteMatterT1 = 154
@@ -101,7 +106,7 @@ def PETbrainWebPhantom(phanPath, phantom_number=0,voxel_size=None,image_size=Non
     t2[indicesSkull] = skullT2
     t2[indicesMarrow] = marrowT2
     t2[indicesBone] = duraT2
-    
+
     if pet_lesion:
          lesion_pet = random_lesion(indicesWhiteMatter, num_lesions,lesion_size_mm)
          lesion_values = np.zeros(num_lesions)
@@ -123,7 +128,7 @@ def PETbrainWebPhantom(phanPath, phantom_number=0,voxel_size=None,image_size=Non
          lesion_values[hot_idx] = whiteMatterT1*1.5
          lesion_values[cold_idx] = grayMatterT1*0.8
          for le in range(num_lesions):
-              t1[lesion_t1[:,:,:,le]] = lesion_values[le]              
+              t1[lesion_t1[:,:,:,le]] = lesion_values[le]
     if t2_lesion:
          lesion_t2 = random_lesion(indicesWhiteMatter, num_lesions,lesion_size_mm)
          lesion_values = np.zeros(num_lesions)
@@ -134,31 +139,31 @@ def PETbrainWebPhantom(phanPath, phantom_number=0,voxel_size=None,image_size=Non
          lesion_values[hot_idx] = whiteMatterT1*1.5
          lesion_values[cold_idx] = grayMatterT1*0.8
          for le in range(num_lesions):
-              t2[lesion_t2[:,:,:,le]] = lesion_values[le]  
+              t2[lesion_t2[:,:,:,le]] = lesion_values[le]
 
     pet = regrid(pet,[0.5,0.5,0.5],voxel_size)
     pet = zero_pad(pet,image_size)
     pet[pet<0]=0
-    
+
     mumap = regrid(mumap,[0.5,0.5,0.5],voxel_size)
     mumap = zero_pad(mumap,image_size)
     mumap[mumap<0]=0
-    
+
     t1 = regrid(t1,[0.5,0.5,0.5],voxel_size)
     t1 = zero_pad(t1,image_size)
     t1[t1<0]=0
-    
+
     t2 = regrid(t2,[0.5,0.5,0.5],voxel_size)
     t2 = zero_pad(t2,image_size)
     t2[t2<0]=0
-    
+
     return pet, mumap, t1, t2
 
 def random_lesion(img, num_lesions,lesion_size_mm):
      import random
 
      #img : indicesWhiteMatter
-     idx = np.array(np.nonzero(img.flatten('F').reshape(-1,))).reshape(-1,)   
+     idx = np.array(np.nonzero(img.flatten('F').reshape(-1,))).reshape(-1,)
      i = random.sample(range(0, idx.shape[0]), num_lesions)
      i,j,k=col2ijk(idx[i],img.shape[0],img.shape[1],img.shape[2])
 
@@ -166,14 +171,14 @@ def random_lesion(img, num_lesions,lesion_size_mm):
      y = np.arange(img.shape[1])
      z = np.arange(img.shape[2])
      xx, yy,zz = np.meshgrid(x, y,z,indexing='ij')
-     
+
      r = lesion_size_mm[0]/0.5+(lesion_size_mm[1]-lesion_size_mm[0])/0.5**np.random.rand(num_lesions)
      lesions = np.zeros((img.shape[0],img.shape[1],img.shape[2],num_lesions))
-     
-     for le in range(num_lesions):
-          lesions[:,:,:,le] = (((xx-i[le])**2+(yy-j[le])**2+(zz-k[le])**2)<r[le]**2).astype('float') 
-     
-     return lesions>0 
+
+     for le in trange(num_lesions, unit="lesion"):
+          lesions[:,:,:,le] = (((xx-i[le])**2+(yy-j[le])**2+(zz-k[le])**2)<r[le]**2).astype('float')
+
+     return lesions>0
 
 def col2ijk(m,Nx,Ny,Nk):
      n = Nx*Ny
@@ -187,29 +192,29 @@ def col2ijk(m,Nx,Ny,Nk):
      return i.astype(int)-1,j.astype(int)-1,k.astype(int)-1
 
 def regrid(img, voxel_size, new_voxel_size, method='linear'):
-    # img (numpy.ndarray)   
+    # img (numpy.ndarray)
     # method: linear/ nearest
     from scipy.interpolate import RegularGridInterpolator
-    
+
     new_shape = [int(np.round(img.shape[k]*voxel_size[k]/new_voxel_size[k])) for k in range(np.ndim(img))]
     if np.ndim(img)==3:
-        x, y, z = [voxel_size[k] * np.arange(img.shape[k]) for k in range(3)]         
+        x, y, z = [voxel_size[k] * np.arange(img.shape[k]) for k in range(3)]
         f = RegularGridInterpolator((x, y, z), img, method=method)
         x, y, z = [np.linspace(0, voxel_size[k] * (img.shape[k]-1), new_shape[k]) for k in range(3)]
         new_grid = np.array(np.meshgrid(x, y, z, indexing='ij'))
         new_grid = np.moveaxis(new_grid, (0, 1, 2, 3), (3, 0, 1, 2))
     else:
-        x, y = [voxel_size[k] * np.arange(img.shape[k]) for k in range(2)]  
+        x, y = [voxel_size[k] * np.arange(img.shape[k]) for k in range(2)]
         f = RegularGridInterpolator((x, y), img, method=method)
         x, y = [np.linspace(0, voxel_size[k] * (img.shape[k]-1), new_shape[k]) for k in range(2)]
         new_grid = np.array(np.meshgrid(x, y, indexing='ij'))
-        new_grid = np.moveaxis(new_grid, (0, 1, 2), (2, 0, 1))   
+        new_grid = np.moveaxis(new_grid, (0, 1, 2), (2, 0, 1))
 
     new_img = f(new_grid)
     return new_img
 
 def zero_pad(x,new_size):
-    #new_size -->tuple     
+    #new_size -->tuple
     def idxs(m,q):
         if m <q:
             i = (q-m)/2
@@ -217,9 +222,9 @@ def zero_pad(x,new_size):
         else:
             ii=[0,m]
         return ii
-    
+
     X = np.zeros(new_size,dtype=x.dtype)
-    
+
     if np.ndim(x)==3 and x.shape[2]>1:
         i,j,k = [idxs(x.shape[k],new_size[k]) for k in range(3)]
         X[i[0]:i[1],j[0]:j[1],k[0]:k[1]] = x
@@ -252,7 +257,7 @@ def download_brain_web(phanPath, phantom_number = 0, download_all = False):
      'http://brainweb.bic.mni.mcgill.ca/cgi/brainweb1?do_download_alias=subject53_crisp&format_value=raw_short&zip_value=gnuzip&download_for_real=%5BStart+download%21%5D',
      'http://brainweb.bic.mni.mcgill.ca/cgi/brainweb1?do_download_alias=subject54_crisp&format_value=raw_short&zip_value=gnuzip&download_for_real=%5BStart+download%21%5D']
      if download_all:
-          for i in range(len(links)): 
+          for i in range(len(links)):
                download_brain_web(phanPath, phantom_number = i)
           return
      if phantom_number>19:
@@ -268,7 +273,7 @@ def imRotation(img,angle,num_rand_rotations=0):
 
      # example: imRotation(img,15), imRotation(img,15,5), imRotation(img,[3,45,-10])
     from scipy.ndimage import rotate
-    
+
     if num_rand_rotations>0:
         # take angle as an interval
         Angle = 2*angle*np.random.rand(num_rand_rotations)-angle
@@ -278,7 +283,7 @@ def imRotation(img,angle,num_rand_rotations=0):
          if np.isscalar(angle):
               Angle = [angle]
          else:
-              Angle = angle     
+              Angle = angle
 
     imgr = np.zeros((len(Angle),) + img.shape,dtype=img.dtype)
     for a in range(len(Angle)):
@@ -292,7 +297,5 @@ def imRotation(img,angle,num_rand_rotations=0):
               if np.ndim(img)==3:
                    imgr[a,:,:,:] = img
               else:
-                   imgr[a,:,:] = img    
+                   imgr[a,:,:] = img
     return np.squeeze(imgr)
-
-

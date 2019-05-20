@@ -6,7 +6,7 @@ Created on Thu May 16 13:55:55 2019
 """
 import numpy as np
 from matplotlib import pyplot as plt
-from geometry.BuildGeometry_v2 import BuildGeometry_v2
+from BuildGeometry_v2 import BuildGeometry_v2
 from brainweb import PETbrainWebPhantom
 
 binPath = r'C:\MatlabWorkSpace\apirl-tags\APIRL1.3.3_win64_cuda8.0_sm35\build\bin'
@@ -60,9 +60,5 @@ img_osem_3d_batch = PET.OSEM3D(y3d_batch, AN=AF3d_batch, niter = 2, nsubs = 6, p
 #img_ramla_3d = PET.Ramla3D(y3d, AN=AF3d, niter = 2, nsubs = 4, psf=0.2)
 #img_ramla_3d_batch = PET.Ramla3D(y3d_batch, AN=AF3d_batch, niter = 2, nsubs = 6, psf=0.2)
 
-# switch back to 2D 
+# switch back to 2D
 PET.is3d = False
-
-
-
-
