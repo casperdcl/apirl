@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri May 17 16:34:30 2019
-
-@author: abm15
-"""
 import numpy as np
 import os
 from tqdm.auto import trange

@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Apr 29 23:45:29 2018
-
-@author: abm15
-"""
 from tqdm.auto import trange
 
 mct = {'model_number':          1104,
