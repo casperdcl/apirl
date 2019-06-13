@@ -15,7 +15,7 @@ Options:
 
 Examples:
   show --sigma 1.5 --noise 0.5 --outres MR --save \\
-    brainweb.raws/subject_??.raws
+    brainweb.raws/subject_??.bin
 """
 from __future__ import division
 import numpy as np
